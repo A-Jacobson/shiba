@@ -1,6 +1,19 @@
 # shiba
 A simple, flexible, pytorch training loop in the spirit of keras.
 
+### Features
+- callbacks
+- learning rate finder
+- learning rate schedulers
+- tensorboard and comet visualizations
+- mixed percision/fp16 training (todo)
+- multigpu training (todo)
+- (maybe) grpc/rest deployment hook
+
+## Install
+```bash
+pip install git+https://github.com/A-Jacobson/shiba.git
+```
 ### Train resnet18 on CIFAR10 with tensorboard logging
 ```python
 import torch
