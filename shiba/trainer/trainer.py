@@ -25,8 +25,8 @@ class Trainer(Observable):
     def _default_train_step(self, batch):
         self.model.train()
         inputs, targets = batch
-        inputs = inputs.to(self.device)
-        targets = targets.to(self.device)
+        inputs = inputs.to(self.device, nonblocking=True)
+        targets = targets.to(self.device, nonblocking=True)
         self.optimizer.zero_grad()
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
@@ -41,8 +41,8 @@ class Trainer(Observable):
     def _default_eval_step(self, batch):
         self.model.eval()
         inputs, targets = batch
-        inputs = inputs.to(self.device)
-        targets = targets.to(self.device)
+        inputs = inputs.to(self.device, nonblocking=True)
+        targets = targets.to(self.device, nonblocking=True)
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
         return dict(loss=loss.item(),
@@ -104,7 +104,7 @@ class Trainer(Observable):
     def find_lr(self, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4, smoothing=0.98):
 
         # checkpoint states before lr finder explodes them.
-        model_state = copy.deepcopy(self.model.state_dict())
+        model_state = copy.deepcopy(self.model.state_dict())  # deepcopy or training will modify this state
         optimizer_state = copy.deepcopy(self.optimizer.state_dict())
         train_loader = DataLoader(self.train_dataset, batch_size, shuffle=True, num_workers=num_workers)
         num_batches = len(train_loader) - 1
