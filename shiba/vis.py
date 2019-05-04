@@ -1,12 +1,12 @@
 import math
 
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
 from torchvision.transforms.functional import to_pil_image, to_tensor
 from torchvision.utils import make_grid
-
 
 COLORS = [(94, 79, 162),  # purple
           (50, 136, 189),  # purple
@@ -163,3 +163,16 @@ def classification_snapshot(inputs, outputs, targets, nrow=4):
     grid = make_grid(annotated, nrow=nrow)
     return dict(snapshot=grid)
 
+
+def plot_lr_find(lrs, losses):
+    formatter = ticker.FuncFormatter(lambda x, pos: f'{x:1.0e}')
+    plt.figure(figsize=(10, 6))
+    ax = plt.subplot(111)
+    ax.set_xscale('log')
+    ax.xaxis.set_major_formatter(formatter)
+    ax.plot(lrs[10:-5], losses[10:-5])
+    plt.title('Learning Rate Finder')
+    plt.ylabel('Loss')
+    plt.xlabel('Learning Rate (Log Scale)')
+    plt.grid()
+    plt.show()

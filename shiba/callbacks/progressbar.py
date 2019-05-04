@@ -1,5 +1,6 @@
-from .base import Callback
 from tqdm.auto import tqdm
+
+from .base import Callback
 
 
 class ProgressBar(Callback):
@@ -27,4 +28,3 @@ class ProgressBar(Callback):
 
     def on_train_end(self, state):
         self.train_pbar.close()
-

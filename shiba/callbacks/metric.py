@@ -1,19 +1,15 @@
-from functools import partial
-
-from .base import Callback
-from ..utils import AverageMeter
 import torch
+
+from shiba.utils import AverageMeter
+from .base import Callback
 
 
 class Metric(Callback):
     """
     Applies a function to targets and output at the end of each training and validation batch. Records the average.
     """
-    def __init__(self, metric, name, output_transform=None, **kwargs):
-        if kwargs:
-            self.metric = partial(metric, **kwargs)
-        else:
-            self.metric = metric
+    def __init__(self, metric, name, output_transform=None):
+        self.metric = metric
         self.name = name
         self.output_transform = output_transform
         self.train_history = []
@@ -36,9 +32,7 @@ class Metric(Callback):
             output = self.output_transform(output)
         targets = state.get('train_output')['targets']
         score = self.metric(output, targets)
-        if isinstance(score, torch.Tensor):
-            score = score.item()
-        self.score_meter.update(score)
+        self.score_meter.update(score.item())
         state['metrics'][f'train_{self.name}'] = self.avg_score  # update state
 
     @torch.no_grad()
@@ -48,9 +42,7 @@ class Metric(Callback):
             output = self.output_transform(output)
         targets = state.get('val_output')['targets']
         score = self.metric(output, targets)
-        if isinstance(score, torch.Tensor):
-            score = score.item()
-        self.val_score_meter.update(score)
+        self.val_score_meter.update(score.item())
         state['metrics'][f'val_{self.name}'] = self.avg_val_score  # update state
 
     def on_epoch_end(self, state):

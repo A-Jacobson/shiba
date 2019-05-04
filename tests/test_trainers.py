@@ -1,40 +1,19 @@
+import torch
+from torch import nn
 from torchvision.datasets import CIFAR10
-from torchvision import transforms
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.optim import Adam
-from shiba.callbacks import TensorBoard
-from shiba.trainer import Trainer
+from torchvision.transforms import ToTensor
+from torchvision.models import resnet18
 
-transform = transforms.ToTensor()
-dataset = CIFAR10('../cifar', train=True, download=True, transform=transform)
+from shiba import Trainer
 
+model = resnet18()
+model.fc = nn.Linear(512, 10)
 
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, kernel_size=3, padding=1)
-        self.fc1 = nn.Linear(16 * 8 * 8, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+train_dataset = CIFAR10('data', train=True, download=True, transform=ToTensor())
+val_dataset = CIFAR10('data', train=False, download=True, transform=ToTensor())
 
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(x.size(0), -1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-
-
-net = Net()
-net.cuda()
+optimizer = torch.optim.Adam(model.parameters())
 criterion = nn.CrossEntropyLoss()
-optimizer = Adam(net.parameters())
+trainer = Trainer(model, criterion, optimizer, train_dataset, val_dataset)
 
-trainer = Trainer(net, optimizer, criterion, dataset)
-
-trainer.fit(dataset, callbacks=[TensorBoard()], cuda=True, nb_epoch=3)
+trainer.fit(max_epochs=1)

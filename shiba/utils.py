@@ -1,6 +1,7 @@
 from shutil import copyfile
-from torchvision import transforms
+
 import torch
+from torchvision import transforms
 
 
 def imagenet_normalize():
@@ -15,31 +16,26 @@ def gram_matrix(img):
     return features @ features_t / (ch * h * w)
 
 
-class AverageMeter(object):
+class AverageMeter:
     """Computes and stores the average and current value"""
-
-    def __init__(self, window_size=None):
-        self.length = 0
-        self.val = 0
+    def __init__(self):
+        self.value = 0
         self.avg = 0
         self.sum = 0
         self.count = 0
-        self.window_size = window_size
 
     def reset(self):
-        self.length = 0
-        self.val = 0
+        self.value = 0
         self.avg = 0
         self.sum = 0
         self.count = 0
 
-    def update(self, val, n=1):
-        if self.window_size and (self.count >= self.window_size):
-            self.reset()
-        self.val = val
-        self.sum += val * n
-        self.count += n
+    def update(self, value):
+        self.value = value
+        self.sum += value
+        self.count += 1
         self.avg = self.sum / self.count
+
 
 
 def save_checkpoint(model_state, optimizer_state, filename, epoch=None, is_best=False):
@@ -54,3 +50,5 @@ def save_checkpoint(model_state, optimizer_state, filename, epoch=None, is_best=
 def adjust_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
+

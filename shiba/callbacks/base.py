@@ -1,8 +1,8 @@
-
 class Callback:
     """
     Base shiba callback, all possible events are defined here
     """
+
     def on_epoch_begin(self, state):
         pass
 
@@ -29,5 +29,3 @@ class Callback:
 
     def on_eval_end(self, state):
         pass
-
-

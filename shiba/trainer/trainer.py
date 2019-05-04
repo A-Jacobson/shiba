@@ -1,19 +1,21 @@
+import copy
 import torch
 from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 
 from shiba.callbacks import Metric, ProgressBar
 from shiba.trainer.base import Observable
 from shiba.utils import adjust_lr
+from shiba.vis import plot_lr_find
 
 
 class Trainer(Observable):
     def __init__(self, model, criterion, optimizer, train_dataset, val_dataset=None, train_step=None, eval_step=None):
         super(Trainer, self).__init__()
-        self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
+        self.model = model
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.lr = None
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
         self.train_step = train_step if train_step else self._default_train_step
@@ -23,8 +25,8 @@ class Trainer(Observable):
     def _default_train_step(self, batch):
         self.model.train()
         inputs, targets = batch
-        inputs = inputs.to(self.device, non_blocking=True)
-        targets = targets.to(self.device, non_blocking=True)
+        inputs = inputs.to(self.device)
+        targets = targets.to(self.device)
         self.optimizer.zero_grad()
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
@@ -39,8 +41,8 @@ class Trainer(Observable):
     def _default_eval_step(self, batch):
         self.model.eval()
         inputs, targets = batch
-        inputs = inputs.to(self.device, non_blocking=True)
-        targets = targets.to(self.device, non_blocking=True)
+        inputs = inputs.to(self.device)
+        targets = targets.to(self.device)
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
         return dict(loss=loss.item(),
@@ -99,8 +101,40 @@ class Trainer(Observable):
 
         self.train_end()
 
-    def find_lr(self, min=1e-5, max=1):
-        pass
+    def find_lr(self, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4, smoothing=0.98):
+
+        # checkpoint states before lr finder explodes them.
+        model_state = copy.deepcopy(self.model.state_dict())
+        optimizer_state = copy.deepcopy(self.optimizer.state_dict())
+        train_loader = DataLoader(self.train_dataset, batch_size, shuffle=True, num_workers=num_workers)
+        num_batches = len(train_loader) - 1
+        mult = (max_lr / min_lr) ** (1 / num_batches)
+        lr = min_lr
+        avg_loss = 0
+        best_loss = 0
+        batch_num = 0
+        losses = []
+        lrs = []
+        for batch in tqdm(train_loader):
+            batch_num += 1
+            train_output = self.train_step(batch)
+            # Compute the smoothed loss
+            avg_loss = smoothing * avg_loss + (1 - smoothing) * train_output['loss']
+            smoothed_loss = avg_loss / (1 - smoothing ** batch_num)
+            # Stop if the loss is exploding
+            if batch_num > 1 and smoothed_loss > 4 * best_loss:
+                break
+            # Record the best loss
+            if smoothed_loss < best_loss or batch_num == 1:
+                best_loss = smoothed_loss
+
+            losses.append(smoothed_loss)
+            lrs.append(lr)
+            lr *= mult
+            adjust_lr(self.optimizer, lr)
+        plot_lr_find(lrs, losses)
+        self.model.load_state_dict(model_state)
+        self.optimizer.load_state_dict(optimizer_state)
 
     @torch.no_grad()
     def predict(self, batch):

@@ -1,4 +1,8 @@
 class Observable:
+    """
+    Base class for all shiba Trainers. Registers Callbacks and triggers them when events occur.
+    """
+
     def __init__(self):
         self.callbacks = []
         self.state = None
