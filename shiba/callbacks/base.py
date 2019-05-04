@@ -1,4 +1,8 @@
+
 class Callback:
+    """
+    Base shiba callback, all possible events are defined here
+    """
     def on_epoch_begin(self, state):
         pass
 

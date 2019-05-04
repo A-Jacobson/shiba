@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 from shiba.callbacks import TensorBoard
-from shiba.trainers import Trainer
+from shiba.trainer import Trainer
 
 transform = transforms.ToTensor()
 dataset = CIFAR10('../cifar', train=True, download=True, transform=transform)

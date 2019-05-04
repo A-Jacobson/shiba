@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from shiba.callbacks import Metric, ProgressBar
-from shiba.trainers.base import Observable
+from shiba.trainer.base import Observable
 from shiba.utils import adjust_lr
 
 
@@ -22,7 +22,9 @@ class Trainer(Observable):
 
     def _default_train_step(self, batch):
         self.model.train()
-        inputs, targets = batch[0].to(self.device), batch[1].to(self.device)
+        inputs, targets = batch
+        inputs = inputs.to(self.device, non_blocking=True)
+        targets = targets.to(self.device, non_blocking=True)
         self.optimizer.zero_grad()
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
@@ -36,7 +38,9 @@ class Trainer(Observable):
     @torch.no_grad()
     def _default_eval_step(self, batch):
         self.model.eval()
-        inputs, targets = batch[0].to(self.device), batch[1].to(self.device)
+        inputs, targets = batch
+        inputs = inputs.to(self.device, non_blocking=True)
+        targets = targets.to(self.device, non_blocking=True)
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
         return dict(loss=loss.item(),
