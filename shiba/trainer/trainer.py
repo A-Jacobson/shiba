@@ -10,7 +10,24 @@ from shiba.vis import plot_lr_find
 
 
 class Trainer(Observable):
-    def __init__(self, model, criterion, optimizer, train_dataset, val_dataset=None, train_step=None, eval_step=None):
+    """Shiba Trainer"""
+    def __init__(self, model, criterion, optimizer,
+                 train_dataset, val_dataset=None,
+                 hyperparams=None, experiment_name=None,
+                 train_step=None, eval_step=None):
+        """Example of docstring on the __init__ method.
+        Args:
+            model: pytorch model.
+            criterion: loss function.
+            optimizer: pytorch optimizer.
+            train_dataset: pytorch training dataset.
+            val_dataset: pytorch validation dataset.
+            train_step: pass train_function to customize trianing loop.
+            eval_step: pass eval_function to customize trianing loop.
+            hyperparams (dict): {name:value} dict.
+            experiment_name (str)
+
+        """
         super(Trainer, self).__init__()
         self.optimizer = optimizer
         self.criterion = criterion
@@ -20,13 +37,19 @@ class Trainer(Observable):
         self.val_dataset = val_dataset
         self.train_step = train_step if train_step else self._default_train_step
         self.eval_step = eval_step if eval_step else self._default_eval_step
-        self.state = dict(step=0, epoch=0, device=self.device, metrics={})
+        self.state = dict(step=0,
+                          epoch=0,
+                          device=self.device,
+                          train_metrics=dict(),
+                          val_metrics=dict(),
+                          hyperparams=hyperparams,
+                          experiment_name=experiment_name)
 
     def _default_train_step(self, batch):
         self.model.train()
         inputs, targets = batch
-        inputs = inputs.to(self.device, nonblocking=True)
-        targets = targets.to(self.device, nonblocking=True)
+        inputs = inputs.to(self.device, non_blocking=True)
+        targets = targets.to(self.device, non_blocking=True)
         self.optimizer.zero_grad()
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
@@ -36,13 +59,13 @@ class Trainer(Observable):
                     inputs=inputs,
                     outputs=outputs,
                     targets=targets)
-
+    # meow
     @torch.no_grad()
     def _default_eval_step(self, batch):
         self.model.eval()
         inputs, targets = batch
-        inputs = inputs.to(self.device, nonblocking=True)
-        targets = targets.to(self.device, nonblocking=True)
+        inputs = inputs.to(self.device, non_blocking=True)
+        targets = targets.to(self.device, non_blocking=True)
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
         return dict(loss=loss.item(),
@@ -51,7 +74,7 @@ class Trainer(Observable):
                     targets=targets)
 
     def fit(self, max_epochs=1, batch_size=32, lr=3e-4,
-            num_workers=4, callbacks=None, metrics=None):
+            num_workers=4, callbacks=None):
 
         train_loader = DataLoader(self.train_dataset, batch_size, shuffle=True,
                                   pin_memory=True, num_workers=num_workers)
@@ -62,8 +85,6 @@ class Trainer(Observable):
 
         if callbacks:
             self.register_callbacks(callbacks)
-        if metrics:
-            self.register_callbacks(metrics)
 
         self.state['max_epochs'] = max_epochs
         self.state['batch_size'] = batch_size
@@ -102,11 +123,13 @@ class Trainer(Observable):
         self.train_end()
 
     def find_lr(self, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4, smoothing=0.98):
-
+        # todo, rewrite as a callback?
         # checkpoint states before lr finder explodes them.
-        model_state = copy.deepcopy(self.model.state_dict())  # deepcopy or training will modify this state
+        # deepcopy or training will modify this state
+        model_state = copy.deepcopy(self.model.state_dict())
         optimizer_state = copy.deepcopy(self.optimizer.state_dict())
-        train_loader = DataLoader(self.train_dataset, batch_size, shuffle=True, num_workers=num_workers)
+        train_loader = DataLoader(
+            self.train_dataset, batch_size, shuffle=True, num_workers=num_workers)
         num_batches = len(train_loader) - 1
         mult = (max_lr / min_lr) ** (1 / num_batches)
         lr = min_lr
@@ -119,7 +142,8 @@ class Trainer(Observable):
             batch_num += 1
             train_output = self.train_step(batch)
             # Compute the smoothed loss
-            avg_loss = smoothing * avg_loss + (1 - smoothing) * train_output['loss']
+            avg_loss = smoothing * avg_loss + \
+                (1 - smoothing) * train_output['loss']
             smoothed_loss = avg_loss / (1 - smoothing ** batch_num)
             # Stop if the loss is exploding
             if batch_num > 1 and smoothed_loss > 4 * best_loss:

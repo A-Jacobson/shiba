@@ -21,10 +21,10 @@ class ProgressBar(Callback):
 
     def on_batch_end(self, state):
         self.epoch_pbar.update()
-        self.epoch_pbar.set_postfix(state['metrics'])
+        self.epoch_pbar.set_postfix(state['train_metrics'])
 
     def on_eval_end(self, state):
-        self.epoch_pbar.set_postfix(state['metrics'])
+        self.epoch_pbar.set_postfix({**state['train_metrics'], **state['val_metrics']})
 
     def on_train_end(self, state):
         self.train_pbar.close()

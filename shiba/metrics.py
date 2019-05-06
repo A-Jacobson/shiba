@@ -13,6 +13,21 @@ def accuracy(prediction, target):
     return correct / total
 
 
+def categorical_accuracy(output, target):
+    prediction = output.argmax(dim=1)
+    return accuracy(prediction, target)
+
+
+def binary_accuracy(output, target):
+    prediction = (output.sigmoid() > 0.5).float()
+    return accuracy(prediction, target)
+
+
+def threshold_f1(output, target):
+    prediction = (output.sigmoid() > 0.5).float()
+    return f1(prediction, target)
+
+
 def f1(prediction, target):
     """
     prediction: thresholded prediction (zeros or ones)
