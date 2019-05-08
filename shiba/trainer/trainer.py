@@ -117,7 +117,7 @@ class Trainer(Observable):
                     self.eval_batch_end()
 
                 self.eval_end()
-
+            self.state['epoch'] += 1
             self.epoch_end()
 
         self.train_end()
