@@ -1,5 +1,5 @@
-from shiba.callbacks import Callback
 import torch
+from shiba.callbacks import Callback
 
 
 class CheckPointer(Callback):
@@ -13,4 +13,3 @@ class CheckPointer(Callback):
                       'optimizer_state': self.optimizer.state_dict(),
                       'hyperparams': state.get('hyperparams')}
         torch.save(checkpoint, f'{self.experiment_name}.pt')
-

@@ -4,6 +4,13 @@ import torch
 from torchvision import transforms
 
 
+class EndTraining(Exception):
+    """
+    Raised to break out of shiba training loop
+    """
+    pass
+
+
 def imagenet_normalize():
     return transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                 std=[0.229, 0.224, 0.225])
@@ -18,6 +25,7 @@ def gram_matrix(img):
 
 class AverageMeter:
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.value = 0
         self.avg = 0
@@ -37,7 +45,6 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
-
 def save_checkpoint(model_state, optimizer_state, filename, epoch=None, is_best=False):
     state = dict(model_state=model_state,
                  optimizer_state=optimizer_state,
@@ -50,5 +57,3 @@ def save_checkpoint(model_state, optimizer_state, filename, epoch=None, is_best=
 def adjust_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-
-
