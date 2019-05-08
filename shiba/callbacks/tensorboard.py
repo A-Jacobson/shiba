@@ -1,20 +1,21 @@
 from torch.utils.tensorboard import SummaryWriter
 
-from .base import Callback
+from .callbacks import Callback
 
 
 class TensorBoard(Callback):
-    def __init__(self, snapshot_func=None):
+    def __init__(self, log_dir=None, snapshot_func=None):
         self.snapshot_func = snapshot_func
         self.writer = None
+        self.log_dir = log_dir
 
     def on_train_begin(self, state):
         experiment_name = state.get('experiment_name')
         comment = experiment_name if experiment_name else ''
-        self.writer = SummaryWriter(comment=f'_{comment}')
+        self.writer = SummaryWriter(log_dir=self.log_dir, comment=f'_{comment}')
         if state.get('hyperparams'):
             text = ''
-            for name, value in state.get('hyperparams').items():
+            for name, value in state['hyperparams'].items():
                 text += f'{name}: {str(value)}  '
             self.writer.add_text('hyperparams', text, state.get('step'))
 

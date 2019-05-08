@@ -1,4 +1,4 @@
-from .base import Callback
+from .callbacks import Callback
 
 
 class Comet(Callback):
@@ -20,4 +20,3 @@ class Comet(Callback):
         epoch = state.get('epoch')
         for metric, value in state['val_metrics'].items():
             self.experiment.log_metric(metric, value, epoch)
-
