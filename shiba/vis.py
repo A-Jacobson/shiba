@@ -1,10 +1,10 @@
 import math
 
 import matplotlib.pyplot as plt
-from matplotlib import ticker
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
+from matplotlib import ticker
 from torchvision.transforms.functional import to_pil_image, to_tensor
 from torchvision.utils import make_grid
 

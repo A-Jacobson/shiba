@@ -1,10 +1,9 @@
 import torch
+from shiba import Trainer
 from torch import nn
 from torchvision.datasets import CIFAR10
-from torchvision.transforms import ToTensor
 from torchvision.models import resnet18
-
-from shiba import Trainer
+from torchvision.transforms import ToTensor
 
 model = resnet18()
 model.fc = nn.Linear(512, 10)

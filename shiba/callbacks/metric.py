@@ -1,12 +1,13 @@
 import torch
-
 from shiba.utils import AverageMeter
-from .base import Callback
+
+from .callbacks import Callback
 
 
 class Metric(Callback):
     """Applies a function to targets and output at the end of each training and validation batch. Records the average.
     """
+
     def __init__(self, metric, name, output_transform=None):
         self.metric = metric
         self.name = name

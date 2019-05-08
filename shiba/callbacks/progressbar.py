@@ -1,6 +1,6 @@
 from tqdm.auto import tqdm
 
-from .base import Callback
+from .callbacks import Callback
 
 
 class ProgressBar(Callback):
@@ -13,7 +13,7 @@ class ProgressBar(Callback):
         self.train_pbar = tqdm(range(max_epochs), total=max_epochs, unit='epochs')
 
     def on_epoch_begin(self, state):
-        self.epoch_pbar = tqdm(total=state.get('len_loader'), unit='b')
+        self.epoch_pbar = tqdm(total=state.get('num_batches'), unit='b')
 
     def on_epoch_end(self, state):
         self.train_pbar.update()

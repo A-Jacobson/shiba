@@ -1,4 +1,4 @@
-from .base import Callback
+from .callbacks import Callback
 
 
 class LRScheduler(Callback):
