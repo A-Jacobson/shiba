@@ -10,3 +10,4 @@ mnist
 cifar
 tmp
 .ipynb_checkpoints
+weights

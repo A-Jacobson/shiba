@@ -1,7 +1,11 @@
-from shutil import copyfile
-
-import torch
 from torchvision import transforms
+
+
+class EndTraining(Exception):
+    """
+    Raised to break out of shiba training loop
+    """
+    pass
 
 
 def imagenet_normalize():
@@ -18,6 +22,7 @@ def gram_matrix(img):
 
 class AverageMeter:
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.value = 0
         self.avg = 0
@@ -37,18 +42,44 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
-
-def save_checkpoint(model_state, optimizer_state, filename, epoch=None, is_best=False):
-    state = dict(model_state=model_state,
-                 optimizer_state=optimizer_state,
-                 epoch=epoch)
-    torch.save(state, filename)
-    if is_best:
-        copyfile(filename, 'model_best.pth.tar')
-
-
 def adjust_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
 
+class DotDict(dict):
+    """
+    Example:
+    m = DotDict({'first_name': 'Eduardo'}, last_name='Pool', age=24, sports=['Soccer'])
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(DotDict, self).__init__(*args, **kwargs)
+        for arg in args:
+            if isinstance(arg, dict):
+                for k, v in arg.items():
+                    self[k] = v
+
+        if kwargs:
+            for k, v in kwargs.items():
+                self[k] = v
+
+    def __getattr__(self, attr):
+        # https://github.com/aparo/pyes/issues/183
+        if attr.startswith('__'):
+            raise AttributeError
+        return self.get(attr)
+
+    def __setattr__(self, key, value):
+        self.__setitem__(key, value)
+
+    def __setitem__(self, key, value):
+        super(DotDict, self).__setitem__(key, value)
+        self.__dict__.update({key: value})
+
+    def __delattr__(self, item):
+        self.__delitem__(item)
+
+    def __delitem__(self, key):
+        super(DotDict, self).__delitem__(key)
+        del self.__dict__[key]

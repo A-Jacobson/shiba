@@ -1,10 +1,11 @@
 import math
+from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib import ticker
 import numpy as np
 import torch
 from PIL import Image, ImageDraw, ImageFont
+from matplotlib import ticker
 from torchvision.transforms.functional import to_pil_image, to_tensor
 from torchvision.utils import make_grid
 
@@ -136,7 +137,7 @@ def annotate_tensor(tensor, text, color=(255, 255, 255), size=None, position=Non
     if not position:
         position = (int(10 / scale), int(10 / scale))
     image = to_pil_image(tensor)
-    font = ImageFont.truetype('shiba/assets/Roboto-Bold.ttf', size=size)
+    font = ImageFont.truetype(str(Path('shiba/assets/Roboto-Bold.ttf').absolute()), size=size)
     draw = ImageDraw.Draw(image)
     draw.text(position, text, color, font)
     return to_tensor(image)
