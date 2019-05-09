@@ -12,14 +12,14 @@ class Comet(Callback):
         self.experiment.log_parameters(self.hyperparams)
 
     def on_batch_end(self, state):
-        step = state.logs.step
+        step = state.logs.global_step
         self.experiment.log_metric('lr', state.logs.lr, step)
         for metric, value in state.logs.metrics.items():
             if 'train' in metric:
                 self.experiment.log_metric(metric, value, step)
 
     def on_epoch_end(self, state):
-        step = state.logs.step
+        step = state.logs.global_step
         for metric, value in state.logs.metrics.items():
             if 'val' in metric:
                 self.experiment.log_metric(metric, value, step)

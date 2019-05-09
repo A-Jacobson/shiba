@@ -143,7 +143,7 @@ def annotate_tensor(tensor, text, color=(255, 255, 255), size=None, position=Non
     return to_tensor(image)
 
 
-def segmentation_snapshot(inputs, outputs, targets, nrow=4):
+def vis_segment(inputs, outputs, targets, nrow=4):
     outputs_grid = make_grid(outputs.sigmoid() > 0.5)
     inputs_grid = make_grid(inputs[:3, ...], nrow=nrow)
     targets_grid = make_grid(targets, nrow=nrow)
@@ -152,7 +152,7 @@ def segmentation_snapshot(inputs, outputs, targets, nrow=4):
     return dict(preddictions=predictions, targets=targets)
 
 
-def classification_snapshot(inputs, outputs, targets, nrow=4):
+def vis_classify(inputs, outputs, targets, nrow=4):
     predictions = outputs.argmax(dim=1)
     annotated = []
     for image, pred, target in zip(inputs, predictions, targets):
@@ -162,7 +162,7 @@ def classification_snapshot(inputs, outputs, targets, nrow=4):
             color = (255, 0, 0)  # red
         annotated.append(annotate_tensor(image, text, color))
     grid = make_grid(annotated, nrow=nrow)
-    return dict(snapshot=grid)
+    return dict(vis_classify=grid)
 
 
 def plot_lr_find(lrs, losses):
