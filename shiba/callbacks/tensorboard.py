@@ -1,40 +1,39 @@
 from torch.utils.tensorboard import SummaryWriter
 
-from .base import Callback
+from .callbacks import Callback
 
 
 class TensorBoard(Callback):
-    def __init__(self, snapshot_func=None):
+    def __init__(self, log_dir=None, snapshot_func=None, hyperparams=None):
         self.snapshot_func = snapshot_func
         self.writer = None
+        self.log_dir = log_dir
+        self.hyperparams = hyperparams
 
     def on_train_begin(self, state):
-        experiment_name = state.get('experiment_name')
-        comment = experiment_name if experiment_name else ''
-        self.writer = SummaryWriter(comment=f'_{comment}')
-        if state.get('hyperparams'):
+        self.writer = SummaryWriter(log_dir=self.log_dir)
+        if self.hyperparams:
             text = ''
-            for name, value in state.get('hyperparams').items():
+            for name, value in self.hyperparams.items():
                 text += f'{name}: {str(value)}  '
-            self.writer.add_text('hyperparams', text, state.get('step'))
+            self.writer.add_text('hyperparams', text, state.logs.step)
 
     def on_batch_end(self, state):
-        step = state.get('step')
-        self.writer.add_scalar('lr', state.get('learning_rate'), step)
-        for metric, value in state['train_metrics'].items():
-            self.writer.add_scalar(metric, value, step)
+        self.writer.add_scalar('lr', state.logs.lr, state.logs.step)
+        for metric, value in state.logs.metrics.items():
+            if 'train' in metric:
+                self.writer.add_scalar(metric, value, state.logs.step)
 
     def on_epoch_end(self, state):
-        step = state.get('step')
-        for metric, value in state['val_metrics'].items():
-            self.writer.add_scalar(metric, value, step)
+        for metric, value in state.logs.metrics.items():
+            if 'val' in metric:
+                self.writer.add_scalar(metric, value, state.logs.step)
 
         if self.snapshot_func:
-            step = state['step']
-            val_output = state['val_output']
-            inputs = val_output['inputs']
-            outputs = val_output['outputs']
-            targets = val_output['targets']
+            val_out = state.logs.val_out
+            inputs = val_out['inputs']
+            outputs = val_out['outputs']
+            targets = val_out['targets']
             snapshot = self.snapshot_func(inputs, outputs, targets)
             for name, value in snapshot.items():
-                self.writer.add_image(name, value, step)
+                self.writer.add_image(name, value, state.logs.step)
