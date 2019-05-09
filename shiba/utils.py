@@ -42,9 +42,36 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
+class ExponentialAverage:
+    def __init__(self, smoothing=0.98):
+        self.avg = 0
+        self.sum = 0
+        self.smoothing = smoothing
+        self.count = 0
+        self.value = 0
+
+    def update(self, value):
+        self.value = value
+        self.count += 1
+        self.sum = self.smoothing * self.sum + \
+                   (1 - self.smoothing) * value
+        self.avg = self.sum / (1 - self.smoothing ** self.count)
+
+    def reset(self):
+        self.value = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+
 def adjust_lr(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
+
+def adjust_momentum(optimizer, momentum):
+    for param_group in optimizer.param_groups:
+        param_group['momentum'] = momentum
 
 
 class DotDict(dict):

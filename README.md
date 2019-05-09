@@ -43,10 +43,10 @@ callbacks = [TensorBoard(),
             ]   
             
 # optimizer defaults to Adam
-trainer = Trainer(model, criterion, train_dataset, val_dataset, callbacks) 
+trainer = Trainer(model, criterion) 
 
 #lr defaults to 3e-4 (the best learning rate https://twitter.com/karpathy/status/801621764144971776?lang=en) 
-trainer.fit(epochs=10)
+trainer.fit(train_dataset, val_dataset, epochs=10, callback=callbacks)
 ```
 
 ### Write your own training steps and validation steps.
@@ -76,7 +76,7 @@ def custom_step(batch, core):
                 targets=targets)
                 
 
-trainer = Trainer(model, criterion, train_dataset, train_step=custom_step)
+trainer = Trainer(model, criterion, train_step=custom_step)
 ```
 
 ### Use Callbacks to easily add support for logging, Progress bars, metrics, and learning rate schedulers.

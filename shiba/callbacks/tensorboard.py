@@ -20,6 +20,8 @@ class TensorBoard(Callback):
 
     def on_batch_end(self, state):
         self.writer.add_scalar('lr', state.logs.lr, state.logs.step)
+        if state.logs.momentum:
+            self.writer.add_scalar('momentum', state.logs.momentum, state.logs.step)
         for metric, value in state.logs.metrics.items():
             if 'train' in metric:
                 self.writer.add_scalar(metric, value, state.logs.step)

@@ -26,7 +26,10 @@ class Save(Callback):
         self.last_save += 1
         core = state.core
         logs = state.logs
-        self.value = logs.metrics.get(self.monitor) or logs.train_metrics
+        self.value = logs.metrics.get(self.monitor)
+        if not self.value:
+            raise ValueError(
+                f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')
         value = self.value if self.mode == 'min' else -self.value  # flip comparison if mode = max
         if self.last_save == self.interval and value > self.best_value:
             self.save_dir.mkdir(parents=True, exist_ok=True)
@@ -36,6 +39,3 @@ class Save(Callback):
             torch.save(checkpoint, self.save_dir / f'epoch:{logs.epoch}_{self.monitor}:{self.value:.3f}.pth')
             self.last_save = 0
             self.best_value = value
-        else:
-            if not value:
-                raise ValueError(f'counting find metric: {self.monitor} make sure to track it!')

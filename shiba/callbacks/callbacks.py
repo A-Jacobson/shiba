@@ -73,12 +73,3 @@ class Compose:
     def on_train_end(self, state):
         for callback in self.callbacks:
             callback.on_train_end(state)
-
-    def add_callback(self, callback):
-        if callback not in self.callbacks:
-            self.callbacks.append(callback)
-
-    def add_callbacks(self, callbacks):
-        callbacks = callbacks or []
-        for callback in callbacks:
-            self.add_callback(callback)
