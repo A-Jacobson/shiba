@@ -7,14 +7,14 @@ from torch.utils.data import DataLoader
 
 from shiba.callbacks import Compose
 from shiba.callbacks import Metric, ProgressBar, LRFinder
-from shiba.utils import adjust_lr, DotDict
+from shiba.utils import adjust_lr, DotDict, EndTraining
 
 
 class Trainer:
     """Shiba Trainer"""
 
-    def __init__(self, model, criterion, train_dataset, val_dataset=None,
-                 callbacks=None, optimizer=None, train_step=None, eval_step=None):
+    def __init__(self, model, criterion,
+                 optimizer=None, train_step=None, eval_step=None):
         """Example of docstring on the __init__ method.
         Args:
             model: pytorch model.
@@ -29,9 +29,13 @@ class Trainer:
         optimizer = Adam or optimizer
 
         # logs are anything that can be pickled safely (non_objects)
-        logs = DotDict(step=0,
-                       epoch=0,
+        logs = DotDict(step=None,
+                       epoch=None,
+                       epochs=None,
+                       num_batches=None,
+                       batch_size=None,
                        lr=None,
+                       momentum=None,
                        metrics=dict(),
                        train_out=None,  # output of train_step
                        val_out=None,  # output of val_Step
@@ -39,21 +43,16 @@ class Trainer:
 
         # objects in core must be saved in a special way
         core = DotDict(model=model,
-                       optimizer=optimizer(model.parameters()),
-                       train_dataset=train_dataset,
-                       val_dataset=val_dataset,
+                       optimizer=optimizer(model.parameters(), lr=3e-4),
                        criterion=criterion,
                        device='cuda' if torch.cuda.is_available() else 'cpu')
 
         self.state = DotDict(logs=logs, core=core)  # everything gets passed to callbacks
 
         cudnn.benchmark = True
-        self.run_validate = True if val_dataset else False
         self.train_step = train_step or self._default_train_step
         self.eval_step = eval_step or self._default_eval_step
-        self.default_callbacks = [ProgressBar(), Metric(criterion, 'loss')]
-        callbacks = self.default_callbacks + callbacks if callbacks else self.default_callbacks
-        self.callbacks = Compose(callbacks)
+        self.callbacks = []
 
     @staticmethod
     def _default_train_step(batch, core):
@@ -81,86 +80,107 @@ class Trainer:
                     outputs=outputs,
                     targets=targets)
 
-    def fit(self, epochs=1, batch_size=32, lr=3e-4,
-            num_workers=4, device_ids=None):
+    def fit(self, train_dataset, val_dataset=None, epochs=1, batch_size=32, lr=3e-4,
+            num_workers=4, device_ids=None, callbacks=None):
         core = self.state.core
         logs = self.state.logs
+
+        default_callbacks = [ProgressBar(), Metric(core.criterion, 'loss')]
+        callbacks = Compose(default_callbacks + callbacks if callbacks else default_callbacks)
+
         if device_ids:
             core.model = torch.nn.DataParallel(core.model, device_ids)
-        train_loader = DataLoader(core.train_dataset, batch_size, shuffle=True,
+        train_loader = DataLoader(train_dataset, batch_size, shuffle=True,
                                   pin_memory=True, num_workers=num_workers)
 
         adjust_lr(core.optimizer, lr)
-
+        logs.step = 0
+        logs.epoch = 0
         logs.epochs = epochs
         logs.batch_size = batch_size
         logs.num_batches = len(train_loader)
 
-        self.callbacks.on_train_begin(self.state)
+        # try except here lets us break training within a callback by raising EndTraining error.
+        try:
+            callbacks.on_train_begin(self.state)
 
-        for epoch in range(epochs):
-            core.model.train()
-            self.callbacks.on_epoch_begin(self.state)
+            for epoch in range(epochs):
+                core.model.train()
+                callbacks.on_epoch_begin(self.state)
 
-            for batch in train_loader:
-                self.callbacks.on_batch_begin(self.state)
+                for batch in train_loader:
+                    callbacks.on_batch_begin(self.state)
 
-                core.optimizer.zero_grad()
-                train_out = self.train_step(batch, core)
+                    core.optimizer.zero_grad()
+                    train_out = self.train_step(batch, core)
 
-                if logs.use_fp16:
-                    try:
-                        from apex import amp
-                        with amp.scale_loss(train_out['loss'], core.optimizer) as scaled_loss:
-                            scaled_loss.backward()
-                    except ImportError:
-                        pass
-                else:
-                    train_out['loss'].backward()
+                    if logs.use_fp16:
+                        try:
+                            from apex import amp
+                            with amp.scale_loss(train_out['loss'], core.optimizer) as scaled_loss:
+                                scaled_loss.backward()
+                        except ImportError:
+                            pass
+                    else:
+                        train_out['loss'].backward()
 
-                core.optimizer.step()
+                    core.optimizer.step()
+                    logs.step += 1
+                    logs.train_out = train_out
+                    logs.lr = core.optimizer.param_groups[0]['lr']
+                    if core.optimizer.param_groups[0].get('momentum'):
+                        logs.momentum = core.optimizer.param_groups[0]['momentum']
 
-                logs.step += 1
-                logs.train_out = train_out
-                logs.lr = core.optimizer.param_groups[0]['lr']
+                    callbacks.on_batch_end(self.state)
 
-                self.callbacks.on_batch_end(self.state)
+                if val_dataset:
+                    self.evaluate(val_dataset, batch_size, num_workers=4, device_ids=None, callbacks=callbacks)
 
-            if self.run_validate:
-                self.evaluate(core.val_dataset, batch_size, num_workers=4, device_ids=None)
+                callbacks.on_epoch_end(self.state)
+                logs.epoch += 1
 
-            self.callbacks.on_epoch_end(self.state)
-            logs.epoch += 1
+            callbacks.on_train_end(self.state)
+            self.callbacks = callbacks.callbacks
+        except EndTraining as e:
+            pass
 
-        self.callbacks.on_train_end(self.state)
-
-    def evaluate(self, dataset, batch_size=32, num_workers=4, device_ids=None):
+    def evaluate(self, dataset, batch_size=32, num_workers=4, device_ids=None, callbacks=None):
         core = self.state.core
         logs = self.state.logs
+        if callbacks and not isinstance(callbacks, Compose):
+            callbacks = Compose([ProgressBar(), Metric(core.criterion, 'loss')] + callbacks)
+        elif not callbacks:
+            callbacks = Compose([ProgressBar(), Metric(core.criterion, 'loss')])
+        else:
+            callbacks = callbacks
+
         if device_ids:
             core.model = torch.nn.DataParallel(core.model, device_ids)
         core.model.eval()
         val_loader = DataLoader(dataset, batch_size, shuffle=False,
                                 pin_memory=True, num_workers=num_workers)
         for batch in val_loader:
-            self.callbacks.on_eval_batch_begin(self.state)
+            callbacks.on_eval_batch_begin(self.state)
             val_out = self.eval_step(batch, core)
             logs.val_out = val_out
 
-            self.callbacks.on_eval_batch_end(self.state)
+            callbacks.on_eval_batch_end(self.state)
 
-        self.callbacks.on_eval_end(self.state)
+        callbacks.on_eval_end(self.state)
+        self.callbacks = callbacks.callbacks
 
-    def find_lr(self, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4, smoothing=0.98):
-        # save original callbacks, hide val dataset to skip validation
-        callbacks_tmp = self.callbacks
-        val_flag_tmp = self.run_validate
-        self.run_validate = False
-        lr_finder = LRFinder(min_lr=min_lr, max_lr=max_lr, smoothing=smoothing)
-        self.callbacks = Compose(self.default_callbacks + [lr_finder])
-        self.fit(epochs=1, batch_size=batch_size, num_workers=num_workers)
-        self.run_validate = val_flag_tmp
-        self.callbacks = callbacks_tmp
+    def find_lr(self, dataset, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4, smoothing=0.98):
+        """calls fit with LRFinder callback
+        Args:
+            dataset:
+            min_lr:
+            max_lr:
+            batch_size:
+            num_workers:
+            smoothing:
+        """
+        callbacks = [LRFinder(min_lr=min_lr, max_lr=max_lr, smoothing=smoothing)]
+        self.fit(dataset, epochs=1, batch_size=batch_size, num_workers=num_workers, callbacks=callbacks)
 
     @torch.no_grad()
     def predict(self, batch):

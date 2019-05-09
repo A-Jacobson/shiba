@@ -1,6 +1,6 @@
 import torch
 
-from shiba.utils import AverageMeter
+from shiba.utils import AverageMeter, ExponentialAverage
 from .callbacks import Callback
 
 
@@ -14,7 +14,7 @@ class Metric(Callback):
         self.output_transform = output_transform
         self.train_history = []
         self.val_history = []
-        self.train_score_meter = AverageMeter()
+        self.train_score_meter = ExponentialAverage(smoothing=0.98)
         self.val_score_meter = AverageMeter()
 
     @property

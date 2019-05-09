@@ -7,14 +7,12 @@ from .callbacks import Callback
 
 class LRFinder(Callback):
 
-    def __init__(self, min_lr, max_lr, smoothing):
+    def __init__(self, min_lr, max_lr):
         self.model_state = None
         self.optimizer_state = None
         self.min_lr = min_lr
         self.max_lr = max_lr
-        self.smoothing = smoothing
         self.lr_multiplier = None
-        self.avg_loss = 0
         self.best_loss = 0
         self.losses = []
         self.lrs = []
@@ -28,17 +26,17 @@ class LRFinder(Callback):
         self.lr_multiplier = (self.max_lr / self.min_lr) ** (1 / (logs.num_batches - 1))
 
     def on_batch_end(self, state):
-        self.avg_loss = self.smoothing * self.avg_loss + \
-                        (1 - self.smoothing) * state.logs.train_out['loss'].item()
-        smoothed_loss = self.avg_loss / (1 - self.smoothing ** state.logs.step)
-
-        if state.logs.step > 1 and smoothed_loss > 4 * self.best_loss:
+        loss = state.logs.metrics['train_loss']
+        if state.logs.step > 1 and loss > 4 * self.best_loss:
+            plot_lr_find(self.lrs, self.losses)
+            state.core.model.load_state_dict(self.model_state)
+            state.core.optimizer.load_state_dict(self.optimizer_state)
             raise EndTraining('loss exploded, stop lr finder')
 
         else:
-            self.best_loss = smoothed_loss
+            self.best_loss = loss
 
-        self.losses.append(smoothed_loss)
+        self.losses.append(loss)
         self.lrs.append(self.lr)
         self.lr *= self.lr_multiplier
         adjust_lr(state.core.optimizer, self.lr)
