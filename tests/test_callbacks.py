@@ -13,7 +13,7 @@ model.fc = nn.Linear(512, 10)
 
 train_dataset = CIFAR10('cifar', train=True, download=True, transform=ToTensor())
 val_dataset = CIFAR10('cifar', train=False, download=True, transform=ToTensor())
-callbacks = [TensorBoard(snapshot_func=classification_snapshot),
+callbacks = [TensorBoard(vis_function=classification_snapshot),
              Metric(categorical_accuracy, 'accuracy'),
              Save('weights', interval=2)
              ]

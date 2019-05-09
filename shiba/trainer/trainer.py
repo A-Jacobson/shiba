@@ -6,7 +6,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 
 from shiba.callbacks import Compose
-from shiba.callbacks import Metric, ProgressBar, LRFinder
+from shiba.callbacks import Metric, ProgressBar, LRFinder, OneCycle
 from shiba.utils import adjust_lr, DotDict, EndTraining
 
 
@@ -26,12 +26,13 @@ class Trainer:
             eval_step: pass eval_function to customize training loop.
         """
         super(Trainer, self).__init__()
-        optimizer = Adam or optimizer
+        optimizer = optimizer or Adam
 
         # logs are anything that can be pickled safely (non_objects)
         logs = DotDict(step=None,
                        epoch=None,
                        epochs=None,
+                       global_step=0,
                        num_batches=None,
                        batch_size=None,
                        lr=None,
@@ -126,6 +127,7 @@ class Trainer:
 
                     core.optimizer.step()
                     logs.step += 1
+                    logs.global_step += 1
                     logs.train_out = train_out
                     logs.lr = core.optimizer.param_groups[0]['lr']
                     if core.optimizer.param_groups[0].get('momentum'):
@@ -169,7 +171,7 @@ class Trainer:
         callbacks.on_eval_end(self.state)
         self.callbacks = callbacks.callbacks
 
-    def find_lr(self, dataset, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4, smoothing=0.98):
+    def find_lr(self, dataset, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4):
         """calls fit with LRFinder callback
         Args:
             dataset:
@@ -179,8 +181,24 @@ class Trainer:
             num_workers:
             smoothing:
         """
-        callbacks = [LRFinder(min_lr=min_lr, max_lr=max_lr, smoothing=smoothing)]
+        callbacks = [LRFinder(min_lr=min_lr, max_lr=max_lr)]
         self.fit(dataset, epochs=1, batch_size=batch_size, num_workers=num_workers, callbacks=callbacks)
+
+    def fit_one_cycle(self, train_dataset, val_dataset=None, epochs=1, batch_size=32, max_lr=1e-3,
+                      end_percentage=0.1, scale_percentage=None, maximum_momentum=0.95, minimum_momentum=0.85,
+                      num_workers=4, device_ids=None, callbacks=None):
+        one_cycle = OneCycle(max_lr=max_lr,
+                             end_percentage=end_percentage,
+                             scale_percentage=scale_percentage,
+                             maximum_momentum=maximum_momentum,
+                             minimum_momentum=minimum_momentum)
+        if callbacks:
+            callbacks = callbacks + [one_cycle]
+        else:
+            callbacks = [one_cycle]
+        self.fit(train_dataset, val_dataset, epochs=epochs,
+                 batch_size=batch_size, num_workers=num_workers,
+                 device_ids=device_ids, callbacks=callbacks)
 
     @torch.no_grad()
     def predict(self, batch):
