@@ -1,8 +1,8 @@
 from pathlib import Path
+
 import torch
 
 from shiba.callbacks import Callback
-
 
 
 class Save(Callback):
