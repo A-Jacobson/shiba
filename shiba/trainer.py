@@ -13,22 +13,20 @@ from shiba.utils import adjust_lr, DotDict, EndTraining, model_to_devices
 
 class Trainer:
     """Shiba Trainer"""
-    def __init__(self, model, criterion,
-                 optimizer=None, train_step=None, eval_step=None):
+    def __init__(self, model, criterion, optimizer=None, train_step=None, eval_step=None):
         """
         Args:
             model: pytorch model.
-            criterion: loss function.
+            criterion: loss function
             optimizer: pytorch optimizer. defaults to Adam
             train_step: pass train_function to customize training loop.
             eval_step: pass eval_function to customize training loop.
         """
         super(Trainer, self).__init__()
         optimizer = optimizer or Adam
-        # logs are anything that can be pickled safely (non_objects)
         logs = DotDict(step=None, epoch=None, epochs=None, global_step=0, num_batches=None,
-                       batch_size=None, lr=None, momentum=None, metrics=dict())
-        # objects in are passed to steps, are related to the model in some way
+                       batch_size=None, metrics=dict())
+        # objects in are passed to steps, and are related to the model in some way
         core = DotDict(model=model, optimizer=optimizer(model.parameters(), lr=3e-4),
                        criterion=criterion, device='cuda' if torch.cuda.is_available() else 'cpu',
                        train_out=dict(), val_out=dict(), use_fp16=False)
@@ -104,46 +102,6 @@ class Trainer:
         callbacks.on_eval_end(self.state)
         self.callbacks = callbacks.callbacks
 
-    def backward(self):
-        """backward pass, optionally with apex loss scaling"""
-        core = self.state.core
-        if core.use_fp16:
-            try:
-                from apex import amp
-                with amp.scale_loss(core.train_out['loss'], core.optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            except ImportError:
-                pass
-        else:
-            core.train_out['loss'].backward()
-
-    @staticmethod
-    def _set_callbacks(callbacks):
-        default_callbacks = [ProgressBar(), Metric('loss', transform=lambda x: x['loss'].item())]
-        if callbacks and not isinstance(callbacks, Compose):
-            return Compose(default_callbacks + callbacks)
-        elif not callbacks:
-            return Compose(default_callbacks)
-        else:
-            return callbacks
-
-    @staticmethod
-    # TODO Should we even handle non-pytorch batch iterators??
-    def _set_loader(dataset, batch_size, num_workers, shuffle):
-        if isinstance(dataset, Dataset):
-            return DataLoader(dataset, batch_size, shuffle=shuffle,
-                              pin_memory=True, num_workers=num_workers)
-        else:
-            return dataset
-
-    @staticmethod
-    def _handle_rnn(core, loader):
-        # TODO this relies on seq_len being set on the loader, remove loader dependency
-        if hasattr(core.model, 'init_hidden'):
-            core.train_out['hidden'] = core.model.init_hidden(loader.batch_size)
-            if hasattr(loader, 'seq_len'):
-                core.seq_len = loader.seq_len
-
     def find_lr(self, dataset, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4):
         """calls fit with LRFinder callback
         Args:
@@ -213,3 +171,43 @@ class Trainer:
             logs.use_fp16 = True
         else:
             pass
+
+    def backward(self):
+        """backward pass, optionally with apex loss scaling"""
+        core = self.state.core
+        if core.use_fp16:
+            try:
+                from apex import amp
+                with amp.scale_loss(core.train_out['loss'], core.optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            except ImportError:
+                pass
+        else:
+            core.train_out['loss'].backward()
+
+    @staticmethod
+    def _set_callbacks(callbacks):
+        default_callbacks = [ProgressBar(), Metric('loss', transform=lambda x: x['loss'].item())]
+        if callbacks and not isinstance(callbacks, Compose):
+            return Compose(default_callbacks + callbacks)
+        elif not callbacks:
+            return Compose(default_callbacks)
+        else:
+            return callbacks
+
+    @staticmethod
+    # TODO Should we even handle non-pytorch batch iterators??
+    def _set_loader(dataset, batch_size, num_workers, shuffle):
+        if isinstance(dataset, Dataset):
+            return DataLoader(dataset, batch_size, shuffle=shuffle,
+                              pin_memory=True, num_workers=num_workers)
+        else:
+            return dataset
+
+    @staticmethod
+    def _handle_rnn(core, loader):
+        # TODO relies on seq_len being set on the loader, remove loader dependency who should know about sequence len?
+        if hasattr(core.model, 'init_hidden'):
+            core.train_out['hidden'] = core.model.init_hidden(loader.batch_size)
+            if hasattr(loader, 'seq_len'):
+                core.seq_len = loader.seq_len

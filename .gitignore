@@ -6,8 +6,6 @@ dist
 *.egg-info
 .coverage
 runs
-mnist
-data/cifar
-tmp
-.ipynb_checkpoints
+cifar
 weights
+.ipynb_checkpoints
