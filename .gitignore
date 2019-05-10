@@ -7,7 +7,7 @@ dist
 .coverage
 runs
 mnist
-cifar
+data/cifar
 tmp
 .ipynb_checkpoints
 weights

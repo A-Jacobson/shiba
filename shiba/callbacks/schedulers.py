@@ -9,7 +9,7 @@ import torch
 
 class PytorchScheduler(Callback):
     """Wraps a pytorch scheduler."""
-    # TODO refactor this for OneCycle API
+    # TODO refactor this to OneCycle API?
     def __init__(self, scheduler, update_interval='batch'):
         self.scheduler = scheduler
         if update_interval not in ('batch', 'epoch'):

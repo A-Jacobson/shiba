@@ -6,7 +6,7 @@ from shiba.callbacks import Callback
 
 
 class Save(Callback):
-    def __init__(self, save_dir, monitor='val_loss', mode='min', interval=None, max_saves=2):
+    def __init__(self, save_dir, monitor='val_loss', mode='min', interval=1, max_saves=2):
         self.save_dir = Path(save_dir)
         self.monitor = monitor
         self.mode = mode
@@ -31,8 +31,8 @@ class Save(Callback):
         if not self.value:
             raise ValueError(
                 f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')
-        value = self.value if self.mode == 'min' else -self.value  # flip comparison if mode = max
-        if self.last_save == self.interval and value > self.best_value:
+        value = self.value if self.mode == 'min' else - self.value  # flip comparison if mode = max
+        if (self.last_save == self.interval) and value < self.best_value:
             self.save_dir.mkdir(parents=True, exist_ok=True)
             checkpoint = dict(optimizer_state=core.optimizer.state_dict(),
                               model_state=core.model.state_dict(),
@@ -41,8 +41,10 @@ class Save(Callback):
             self.past_checkpoints.append([self.value, save_path])
             # remove worst checkpoint before saving new checkpoint, also compare new checkpoint
             if len(self.past_checkpoints) > self.max_saves:
-                value, path = min(self.past_checkpoints)
+                worst = min(self.past_checkpoints)
+                self.past_checkpoints.remove(worst)
+                value, path = worst
+                torch.save(checkpoint, save_path)
                 Path(path).unlink()
-            torch.save(checkpoint, save_path)
             self.last_save = 0
             self.best_value = value

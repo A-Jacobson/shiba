@@ -73,3 +73,4 @@ class Compose:
     def on_train_end(self, state):
         for callback in self.callbacks:
             callback.on_train_end(state)
+

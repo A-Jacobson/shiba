@@ -32,7 +32,7 @@ class TensorBoard(Callback):
                 self.writer.add_scalar(metric, value, state.logs.global_step)
 
         if self.vis_function:
-            val_out = state.logs.val_out
+            val_out = state.core.val_out
             inputs = val_out['inputs']
             outputs = val_out['outputs']
             targets = val_out['targets']
