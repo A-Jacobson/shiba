@@ -1,3 +1,3 @@
-from .trainer import Trainer
+from shiba.trainer import Trainer
 
 __all__ = 'Trainer'

@@ -5,10 +5,10 @@ import torch.backends.cudnn as cudnn
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
-from .callbacks import Compose
-from .callbacks import Metric, ProgressBar, LRFinder, OneCycle
-from .steps import default_train_step, default_eval_step
-from .utils import adjust_lr, DotDict, EndTraining, model_to_devices
+from shiba.callbacks import Compose
+from shiba.callbacks import Metric, ProgressBar, LRFinder, OneCycle
+from shiba.steps import default_train_step, default_eval_step
+from shiba.utils import adjust_lr, DotDict, EndTraining, model_to_devices
 
 
 class Trainer:
