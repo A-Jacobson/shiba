@@ -183,3 +183,18 @@ def model_summary(model, *inputs, markdown=True, return_layers=False):
 
     if return_layers:
         return layers
+
+
+def model_to_devices(model, device, device_ids):
+    model = model.to(device)
+    if device_ids:
+        model = torch.nn.DataParallel(model, device_ids)
+    return model
+
+
+def get_lr(optimizer):
+    return optimizer.param_groups[0]['lr']
+
+
+def get_momentum(optimizer):
+    return optimizer.param_groups[0].get('momentum')

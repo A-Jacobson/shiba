@@ -1,4 +1,5 @@
 from torch.utils.tensorboard import SummaryWriter
+from shiba.utils import get_lr, get_momentum
 
 from .callbacks import Callback
 
@@ -19,9 +20,11 @@ class TensorBoard(Callback):
             self.writer.add_text('hyperparams', text, state.logs.global_step)
 
     def on_batch_end(self, state):
-        self.writer.add_scalar('lr', state.logs.lr, state.logs.global_step)
+        lr = get_lr(state.core.optimizer)
+        momentum = get_momentum(state.core.optimizer)
+        self.writer.add_scalar('lr', lr, state.logs.global_step)
         if state.logs.momentum:
-            self.writer.add_scalar('momentum', state.logs.momentum, state.logs.global_step)
+            self.writer.add_scalar('momentum', momentum, state.logs.global_step)
         for metric, value in state.logs.metrics.items():
             if 'train' in metric:
                 self.writer.add_scalar(metric, value, state.logs.global_step)
