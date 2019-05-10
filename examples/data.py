@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 
+# adapted from pytorch examples
 class Dictionary(object):
     def __init__(self):
         self.word2idx = {}

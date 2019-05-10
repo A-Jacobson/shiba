@@ -16,13 +16,11 @@ class Trainer:
 
     def __init__(self, model, criterion,
                  optimizer=None, train_step=None, eval_step=None):
-        """Example of docstring on the __init__ method.
+        """
         Args:
             model: pytorch model.
             criterion: loss function.
             optimizer: pytorch optimizer. defaults to Adam
-            train_dataset: pytorch training dataset.
-            val_dataset: pytorch validation dataset.
             train_step: pass train_function to customize training loop.
             eval_step: pass eval_function to customize training loop.
         """
@@ -58,6 +56,19 @@ class Trainer:
 
     def fit(self, train_dataset, val_dataset=None, epochs=1, lr=3e-4,
             batch_size=32, num_workers=4, device_ids=None, callbacks=None):
+        """
+        Args:
+            train_dataset: Pytorch Dataset or loader
+            val_dataset: Pytorch Dataset or loader
+            epochs: num_epochs to train
+            lr: learning rate
+            batch_size: sets, batch size on loader ignored if loader is passed
+            num_workers: num_workers for data loader, ignored if loader is passed
+            device_ids: [0, 1, 2] gpu device ids for multi-gpu training
+            callbacks: list of callbacks
+        Returns:
+
+        """
         core = self.state.core
         logs = self.state.logs
 
@@ -173,10 +184,8 @@ class Trainer:
             batch_size:
             num_workers:
         """
-        save_step = self.state.logs.global_step
         callbacks = [LRFinder(min_lr=min_lr, max_lr=max_lr)]
         self.fit(dataset, epochs=1, batch_size=batch_size, num_workers=num_workers, callbacks=callbacks)
-        self.state.logs.global_step = save_step
 
     def fit_one_cycle(self, train_dataset, val_dataset=None, epochs=1, batch_size=32, max_lr=1e-3,
                       end_percentage=0.1, scale_percentage=None, maximum_momentum=0.95, minimum_momentum=0.85,
@@ -222,7 +231,7 @@ class Trainer:
         trace = torch.jit.trace(core.model, example_inputs)
         trace.save(path)
 
-    def to_fp16(self):
+    def to_fp16(self, opt_level="01"):
         core = self.state.core
         logs = self.state.logs
         amp_available = False
@@ -234,7 +243,7 @@ class Trainer:
                           " you should install it from https://github.com/NVIDIA/apex")
         if amp_available:
             core.model, core.optimizer = amp.initialize(core.model, core.optimizer,
-                                                        opt_level="O1", verbosity=0)
+                                                        opt_level=opt_level, verbosity=0)
             logs.use_fp16 = True
         else:
             pass

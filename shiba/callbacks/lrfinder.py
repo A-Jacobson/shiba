@@ -17,10 +17,12 @@ class LRFinder(Callback):
         self.losses = []
         self.lrs = []
         self.lr = min_lr
+        self._step_save = None
 
     def on_train_begin(self, state):
         core = state.core
         logs = state.logs
+        self._step_save = state.logs.global_step
         self.model_state = copy.deepcopy(core.model.state_dict())
         self.optimizer_state = copy.deepcopy(core.optimizer.state_dict())
         self.lr_multiplier = (self.max_lr / self.min_lr) ** (1 / (logs.num_batches - 1))
@@ -45,4 +47,5 @@ class LRFinder(Callback):
         # restore states and plot results
         state.core.model.load_state_dict(self.model_state)
         state.core.optimizer.load_state_dict(self.optimizer_state)
+        state.logs.global_step = self._step_save
         plot_lr_find(self.lrs, self.losses)
