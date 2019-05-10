@@ -18,13 +18,13 @@ def categorical_accuracy(output, target):
     return accuracy(prediction, target)
 
 
-def binary_accuracy(output, target):
-    prediction = (output.sigmoid() > 0.5).float()
+def binary_accuracy(output, target, threshold=0.5):
+    prediction = (output.sigmoid() > threshold).float()
     return accuracy(prediction, target)
 
 
-def threshold_f1(output, target):
-    prediction = (output.sigmoid() > 0.5).float()
+def threshold_f1(output, target, threshold=0.5):
+    prediction = (output.sigmoid() > threshold).float()
     return f1(prediction, target)
 
 

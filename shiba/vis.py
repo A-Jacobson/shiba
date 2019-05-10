@@ -1,5 +1,5 @@
 import math
-from pathlib import Path
+from pkg_resources import resource_filename
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -137,7 +137,7 @@ def annotate_tensor(tensor, text, color=(255, 255, 255), size=None, position=Non
     if not position:
         position = (int(10 / scale), int(10 / scale))
     image = to_pil_image(tensor)
-    font = ImageFont.truetype(str(Path('shiba/assets/Roboto-Bold.ttf').absolute()), size=size)
+    font = ImageFont.truetype(resource_filename(__name__, 'assets/Roboto-Bold.ttf'), size=size)
     draw = ImageDraw.Draw(image)
     draw.text(position, text, color, font)
     return to_tensor(image)

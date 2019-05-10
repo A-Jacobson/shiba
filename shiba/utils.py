@@ -1,3 +1,5 @@
+import numpy as np
+import torch
 from torchvision import transforms
 
 
@@ -110,3 +112,74 @@ class DotDict(dict):
     def __delitem__(self, key):
         super(DotDict, self).__delitem__(key)
         del self.__dict__[key]
+
+
+def repackage_hidden(h):
+    """Wraps hidden states in new Tensors,
+    to detach them from their history."""
+    if isinstance(h, torch.Tensor):
+        return h.detach()
+    else:
+        return tuple(repackage_hidden(v) for v in h)
+
+
+def count_parameters(module):
+    num_parameters = 0
+    for parameter in module.parameters():
+        num_parameters += np.prod(parameter.shape)
+    return num_parameters
+
+
+class LayerCache:
+    """
+    Saves the input and output of an `nn.Moldule` for further inspection.
+
+    >>> unet = ResUnet34(in_channels=3, out_channels=3, num_filters=32)
+    >>> layer = LayerCache(unet.decode_5)
+    >>> out = unet(x) # run model, layercache saves activations resulting from this run
+    >>> print(layer.output.shape) # torch.Size([1, 256, 16, 16])
+    >>> layer.handle.remove()
+    """
+
+    def __init__(self, module, name=None):
+        self.module = module
+        self.name = name
+        self.handle = module.register_forward_hook(self.hook)
+
+    def hook(self, module, input, output):
+        self.module = module
+        self.input = input
+        self.output = output
+
+
+def model_summary(model, *inputs, markdown=True, return_layers=False):
+    from tabulate import tabulate
+    from IPython.display import display, Markdown
+
+    layers = [LayerCache(module, name) for name, module in model.named_children()]
+    out = model(*inputs)
+    summary = []
+    total_params = 0
+    for layer in layers:
+        params = count_parameters(layer.module)
+        total_params += params
+        output = layer.output
+        if isinstance(output, tuple):
+            shape = [tuple(o[-1].shape) for o in output]
+        else:
+            shape = tuple(output.shape)
+        summary.append([layer.name, shape, f'{params:,}'])
+        layer.handle.remove()
+    summary.append(['TOTAL:', '  -----------------  ', f'{total_params:,}'])
+
+    table = tabulate(summary,
+                     headers=('Name', 'Output Size', 'Parameters'),
+                     disable_numparse=True,
+                     tablefmt='pipe')
+    if markdown:
+        display(Markdown(table))
+    else:
+        print(table)
+
+    if return_layers:
+        return layers
