@@ -4,6 +4,7 @@ from pkg_resources import resource_filename
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from matplotlib import ticker
 from PIL import Image, ImageDraw, ImageFont
 from torchvision.transforms.functional import to_pil_image, to_tensor
 from torchvision.utils import make_grid
