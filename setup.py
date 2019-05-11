@@ -1,5 +1,4 @@
-from setuptools import setup
-
+from setuptools import setup, find_packages
 # to deploy
 # python setup.py sdist bdist_wheel upload
 setup(
@@ -13,5 +12,5 @@ setup(
         'Development Status :: 3 - Alpha',
         'Programming Language :: Python :: 3.6'
     ],
-    packages=['shiba']
+    packages=find_packages(exclude=['tests', 'examples', 'assets'])
 )
