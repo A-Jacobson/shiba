@@ -23,28 +23,23 @@ class Save(Callback):
         self.value = None
         self.past_checkpoints = []
 
-    def on_epoch_end(self, state):
+    def on_epoch_end(self, trainer):
         self.last_save += 1
-        core = state.core
-        logs = state.logs
-        self.value = logs.metrics.get(self.monitor)
+        self.value = trainer.metrics.get(self.monitor)
         if not self.value:
             raise ValueError(
                 f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')
         value = self.value if self.mode == 'min' else - self.value  # flip comparison if mode = max
         if (self.last_save == self.interval) and value < self.best_value:
             self.save_dir.mkdir(parents=True, exist_ok=True)
-            checkpoint = dict(optimizer_state=core.optimizer.state_dict(),
-                              model_state=core.model.state_dict(),
-                              logs=logs)
-            save_path = self.save_dir / f'epoch:{logs.epoch}_{self.monitor}:{self.value:.3f}.pth'
+            save_path = self.save_dir / f'epoch:{trainer.epoch}_{self.monitor}:{self.value:.3f}.pth'
             self.past_checkpoints.append([self.value, save_path])
             # remove worst checkpoint before saving new checkpoint, also compare new checkpoint
             if len(self.past_checkpoints) > self.max_saves:
                 worst = min(self.past_checkpoints)
                 self.past_checkpoints.remove(worst)
                 value, path = worst
-                torch.save(checkpoint, save_path)
+                trainer.save(save_path)
                 Path(path).unlink()
             self.last_save = 0
             self.best_value = value

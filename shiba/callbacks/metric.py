@@ -12,7 +12,7 @@ class Metric(Callback):
     def __init__(self, name, score_func=None, transform=lambda x: (x['outputs'], x['targets']), train_smoothing=0.98):
         """
         Args:
-            name: metrics will be saved to `state.logs.metrics['train_{name}']` and `state.logs.metrics['val_{name}']`
+            name: metrics will be saved to `trainer.logs.metrics['train_{name}']` and `trainer.logs.metrics['val_{name}']`
             metric: function to apply to processed output such as `accuracy`
             transform: function that prepares train_step output for metric function
             train_smoothing: logs training metric with ExponentialAverage
@@ -29,30 +29,28 @@ class Metric(Callback):
         self.val_meter = AverageMeter()
 
     @torch.no_grad()
-    def on_batch_end(self, state):
-        out = state.core.train_out
-        score = self.transform(out)
+    def on_batch_end(self, trainer):
+        score = self.transform(trainer.train_out)
         if self.score_func:
             if isinstance(score, tuple):
                 score = self.score_func(*score)
             else:
                 score = self.score_func(score)
         self.train_meter.update(score)
-        state.logs.metrics[f'train_{self.name}'] = self.train_meter.avg  # update state
+        trainer.metrics[f'train_{self.name}'] = self.train_meter.avg  # update trainer
 
     @torch.no_grad()
-    def on_eval_batch_end(self, state):
-        out = state.core.val_out
-        score = self.transform(out)
+    def on_eval_batch_end(self, trainer):
+        score = self.transform(trainer.val_out)
         if self.score_func:
             if isinstance(score, tuple):
                 score = self.score_func(*score)
             else:
                 score = self.score_func(score)
         self.val_meter.update(score)
-        state.logs.metrics[f'val_{self.name}'] = self.val_meter.avg  # update state
+        trainer.metrics[f'val_{self.name}'] = self.val_meter.avg  # update trainer
 
-    def on_epoch_end(self, state):
+    def on_epoch_end(self, trainer):
         self.train_history.append(self.train_meter.avg)
         self.val_history.append(self.val_meter.avg)
         self.train_meter.reset()

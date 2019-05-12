@@ -16,11 +16,11 @@ class PytorchScheduler(Callback):
             raise ValueError('update must be "batch" or "epoch"')
         self.update_interval = update_interval
 
-    def on_batch_end(self, state):
+    def on_batch_end(self, trainer):
         if self.update_interval == 'batch':
             self.scheduler.step()
 
-    def on_epoch_end(self, state):
+    def on_epoch_end(self, trainer):
         if self.update_interval == 'epoch':
             self.scheduler.step()
 
@@ -101,15 +101,15 @@ class ReduceLROnPlateau(Callback):
         self.eps = eps
         self.scheduler = None
 
-    def on_train_begin(self, state):
-        self.scheduler = lr_scheduler.ReduceLROnPlateau(state.core.optimizer,
+    def on_train_begin(self, trainer):
+        self.scheduler = lr_scheduler.ReduceLROnPlateau(trainer.optimizer,
                                                         mode=self.mode, factor=self.factor, patience=self.patience,
                                                         verbose=False, threshold=self.threshold,
                                                         threshold_mode=self.threshold_mode,
                                                         cooldown=self.cooldown, min_lr=self.min_lr, eps=self.eps)
 
-    def on_epoch_end(self, state):
-        value = state.logs.metrics.get(self.monitor)
+    def on_epoch_end(self, trainer):
+        value = trainer.metrics.get(self.monitor)
         if not value:
             raise ValueError(
                 f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')
@@ -155,15 +155,15 @@ class OneCycle(Callback):
         self.min_momentum = minimum_momentum
         self.scheduler = None
 
-    def on_train_begin(self, state):
-        self.scheduler = schedulers.OneCycle(optimizer=state.core.optimizer, max_lr=self.max_lr,
+    def on_train_begin(self, trainer):
+        self.scheduler = schedulers.OneCycle(optimizer=trainer.optimizer, max_lr=self.max_lr,
                                              end_percentage=self.end_percentage, scale_percentage=self.scale_percentage,
                                              maximum_momentum=self.max_momentum, minimum_momentum=self.min_momentum,
-                                             num_iterations=state.logs.num_batches * state.logs.epochs)
+                                             num_iterations=trainer.num_batches * trainer.epochs)
 
         self.scheduler.setup()
 
-    def on_batch_end(self, state):
+    def on_batch_end(self, trainer):
         self.scheduler.step()
 
     def simulate(self, steps=1000):
@@ -172,7 +172,7 @@ class OneCycle(Callback):
         self.scheduler = schedulers.OneCycle(optimizer=optimizer, max_lr=self.max_lr,
                                              end_percentage=self.end_percentage, scale_percentage=self.scale_percentage,
                                              maximum_momentum=self.max_momentum, minimum_momentum=self.min_momentum,
-                                             num_batches=steps)
+                                             num_iterations=steps)
 
         lrs = []
         moms = []
