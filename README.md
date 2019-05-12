@@ -96,10 +96,10 @@ class ProgressBar(Callback):
 
     def on_batch_end(self, trainer):
         self.epoch_pbar.update()
-        self.epoch_pbar.set_postfix(trainer.logs.metrics)
+        self.epoch_pbar.set_postfix(trainer.metrics)
 
     def on_eval_end(self, trainer):
-        self.epoch_pbar.set_postfix(trainer.logs.metrics)
+        self.epoch_pbar.set_postfix(trainer.metrics)
 
     def on_train_end(self, trainer):
         self.train_pbar.close()
