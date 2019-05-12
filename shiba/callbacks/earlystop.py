@@ -17,8 +17,8 @@ class EarlyStop(Callback):
             self.best_value = -float('inf')
         self.value = None
 
-    def on_epoch_end(self, state):
-        self.value = state.logs.metrics.get(self.monitor)
+    def on_epoch_end(self, trainer):
+        self.value = trainer.logs.metrics.get(self.monitor)
         if not self.value:
             raise ValueError(
                 f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')

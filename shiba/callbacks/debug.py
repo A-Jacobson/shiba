@@ -23,47 +23,47 @@ class Debug(Callback):
             if e not in possible_events:
                 raise ValueError(f'{e} not a valid event, must be one of {possible_events}')
 
-    def on_epoch_begin(self, state):
+    def on_epoch_begin(self, trainer):
         if 'on_epoch_begin' in self.events:
             from ipdb import set_trace
             set_trace()
 
-    def on_epoch_end(self, state):
+    def on_epoch_end(self, trainer):
         if 'on_epoch_end' in self.events:
             from ipdb import set_trace
             set_trace()
 
-    def on_batch_begin(self, state):
+    def on_batch_begin(self, trainer):
         if 'on_batch_begin' in self.events:
             from ipdb import set_trace
             set_trace()
 
-    def on_batch_end(self, state):
+    def on_batch_end(self, trainer):
         if 'on_batch_end' in self.events:
             from ipdb import set_trace
             set_trace()
 
-    def on_eval_batch_begin(self, state):
+    def on_eval_batch_begin(self, trainer):
         if 'on_eval_batch_begin' in self.events:
             from ipdb import set_trace
             set_trace()
 
-    def on_eval_batch_end(self, state):
+    def on_eval_batch_end(self, trainer):
         if 'on_eval_batch_end' in self.events:
             from ipdb import set_trace
             set_trace()
 
-    def on_train_begin(self, state):
+    def on_train_begin(self, trainer):
         if 'on_train_begin' in self.events:
             from ipdb import set_trace
             set_trace()
 
-    def on_train_end(self, state):
+    def on_train_end(self, trainer):
         if 'on_train_end' in self.events:
             from ipdb import set_trace
             set_trace()
 
-    def on_eval_end(self, state):
+    def on_eval_end(self, trainer):
         if 'on_eval_end' in self.events:
             from ipdb import set_trace
             set_trace()

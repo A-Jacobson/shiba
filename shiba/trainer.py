@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, Dataset
 from shiba.callbacks import Compose
 from shiba.callbacks import Metric, ProgressBar, LRFinder, OneCycle
 from shiba.steps import default_train_step, default_eval_step
-from shiba.utils import adjust_lr, DotDict, EndTraining, model_to_devices
+from shiba.utils import adjust_lr, EndTraining, model_to_devices
 
 
 class Trainer:
@@ -23,18 +23,28 @@ class Trainer:
             eval_step: pass eval_function to customize training loop.
         """
         super(Trainer, self).__init__()
-        optimizer = optimizer or Adam
-        logs = DotDict(step=None, epoch=None, epochs=None, global_step=0, num_batches=None,
-                       batch_size=None, metrics=dict())
-        # objects in are passed to steps, and are related to the model in some way
-        core = DotDict(model=model, optimizer=optimizer(model.parameters(), lr=3e-4),
-                       criterion=criterion, device='cuda' if torch.cuda.is_available() else 'cpu',
-                       train_out=dict(), val_out=dict(), use_fp16=False)
-        self.state = DotDict(logs=logs, core=core)  # everything gets passed to callbacks
+        self.model = model
+        self.optimizer = self._build_optimizer(optimizer)
+        self.criterion = criterion
+
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.use_fp16 = False
+
+        self.train_out = dict()
+        self.val_out = dict()
+        self.metrics = dict()
+
+        self.step = None
+        self.epoch = None
+        self.epochs = None
+        self.global_step = 0
+        self.num_batches = None
+        self.batch_size = None
+
+        self.callbacks = []
+
         self.train_step = train_step or default_train_step
         self.eval_step = eval_step or default_eval_step
-        self.callbacks = []
-        cudnn.benchmark = True
 
     def fit(self, train_dataset, val_dataset=None, epochs=1, lr=3e-4,
             batch_size=32, num_workers=4, device_ids=None, callbacks=None):
@@ -50,56 +60,54 @@ class Trainer:
             callbacks: list of callbacks
         Returns:
         """
-        core = self.state.core
-        logs = self.state.logs
-        logs.step = 0
-        logs.epoch = 0
-        logs.epochs = epochs
-        adjust_lr(core.optimizer, lr)
+        cudnn.benchmark = True
+        self.step = 0
+        self.epoch = 0
+        self.epochs = epochs
+        adjust_lr(self.optimizer, lr)
         callbacks = self._set_callbacks(callbacks)
-        core.model = model_to_devices(core.model, core.device, device_ids)
+        self.model = model_to_devices(self.model, self.device, device_ids)
         train_loader = self._set_loader(train_dataset, batch_size, num_workers, shuffle=True)
-        logs.batch_size = train_loader.batch_size  # HACK, set like this to cover LMloader.
-        logs.num_batches = len(train_loader)
+        self.batch_size = train_loader.batch_size  # HACK, set like this to cover LMloader.
+        self.num_batches = len(train_loader)
         # try except here lets us break training within a callback by raising EndTraining error.
         try:
-            callbacks.on_train_begin(self.state)
+            callbacks.on_train_begin(self)
             for epoch in range(epochs):
-                core.model.train()
-                # cache hidden state for sequence models, core is passed to step_function
-                self._handle_rnn(core, train_dataset)  # check if rnn and cache hidden state for sequence models
-                callbacks.on_epoch_begin(self.state)
+                self.model.train()
+                # cache hidden trainer for sequence models, core is passed to step_function
+                self._handle_rnn(train_dataset)  # check if rnn and cache hidden trainer for sequence models
+                callbacks.on_epoch_begin(self)
                 for batch in train_loader:
-                    callbacks.on_batch_begin(self.state)
-                    core.optimizer.zero_grad()
-                    core.train_out = self.train_step(batch, core)
+                    callbacks.on_batch_begin(self)
+                    self.optimizer.zero_grad()
+                    self.train_out = self.train_step(self, batch)
                     self.backward()
-                    callbacks.on_batch_end(self.state)
-                    core.optimizer.step()
-                    logs.step += 1
-                    logs.global_step += 1
+                    callbacks.on_batch_end(self)
+                    self.optimizer.step()
+                    self.step += 1
+                    self.global_step += 1
                 if val_dataset:
                     self.evaluate(val_dataset, batch_size, num_workers=4,
                                   device_ids=None, callbacks=callbacks)
-                callbacks.on_epoch_end(self.state)
-                logs.epoch += 1
-            callbacks.on_train_end(self.state)
+                callbacks.on_epoch_end(self)
+                self.epoch += 1
+            callbacks.on_train_end(self)
             self.callbacks = callbacks.callbacks
         except EndTraining as e:
             pass
 
     def evaluate(self, dataset, batch_size=32, num_workers=4, device_ids=None, callbacks=None):
-        core = self.state.core
         callbacks = self._set_callbacks(callbacks)
         val_loader = self._set_loader(dataset, batch_size, num_workers, shuffle=False)
-        core.model = model_to_devices(core.model, core.device, device_ids)
-        core.model.eval()
-        self._handle_rnn(core, val_loader)  # check if rnn and cache hidden state for sequence models
+        self.model = model_to_devices(self.model, self.device, device_ids)
+        self.model.eval()
+        self._handle_rnn(val_loader)  # check if rnn and cache hidden trainer for sequence models
         for batch in val_loader:
-            callbacks.on_eval_batch_begin(self.state)
-            core.val_out = self.eval_step(batch, core)
-            callbacks.on_eval_batch_end(self.state)
-        callbacks.on_eval_end(self.state)
+            callbacks.on_eval_batch_begin(self)
+            self.val_out = self.eval_step(self, batch)
+            callbacks.on_eval_batch_end(self)
+        callbacks.on_eval_end(self)
         self.callbacks = callbacks.callbacks
 
     def find_lr(self, dataset, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4):
@@ -129,35 +137,29 @@ class Trainer:
 
     @torch.no_grad()
     def predict(self, batch):
-        core = self.state.core
-        core.model.eval()
-        return core.model(batch.to(core.device))
+        self.model.eval()
+        return self.model(batch.to(self.device))
 
     def save(self, path):
-        core = self.state.core
-        logs = self.state.logs
-        checkpoint = dict(optimizer_state=core.optimizer.state_dict(),
-                          model_state=core.model.state_dict(),
-                          logs=logs)
+        checkpoint = dict(optimizer_state=self.optimizer.state_dict(),
+                          model_state=self.model.state_dict(),
+                          metrics=self.metrics,
+                          global_step=self.global_step)
         torch.save(checkpoint, path)
 
     def load(self, path):
-        core = self.state.core
         checkpoint = torch.load(path)
-        core.model.load_state_dict(checkpoint['model_state'])
-        core.optimizer.load_state_dict(checkpoint['optimizer_state'])
-        core.state = checkpoint['trainer_state']
+        self.model.load_state_dict(checkpoint['model_state'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        self.metrics = checkpoint['metrics']
+        self.global_step = checkpoint['global_step']
 
     def save_model_trace(self, path, example_inputs=None):
-        core = self.state.core
-        logs = self.state.logs
-        example_inputs = example_inputs if example_inputs else logs.train_out['inputs']
-        trace = torch.jit.trace(core.model, example_inputs)
+        example_inputs = example_inputs if example_inputs else self.train_out['inputs']
+        trace = torch.jit.trace(self.model, example_inputs)
         trace.save(path)
 
     def to_fp16(self, opt_level="01"):
-        core = self.state.core
-        logs = self.state.logs
         amp_available = False
         try:
             from apex import amp
@@ -166,24 +168,27 @@ class Trainer:
             warnings.warn(f"Error '{e}'' during importing apex library. To use mixed precison"
                           " you should install it from https://github.com/NVIDIA/apex")
         if amp_available:
-            core.model, core.optimizer = amp.initialize(core.model, core.optimizer,
+            self.model, self.optimizer = amp.initialize(self.model, self.optimizer,
                                                         opt_level=opt_level, verbosity=0)
-            logs.use_fp16 = True
+            self.use_fp16 = True
         else:
             pass
 
+    def _build_optimizer(self, optimizer):
+        optimizer = optimizer or Adam
+        return optimizer(self.model.parameters(), lr=3e-4)
+
     def backward(self):
         """backward pass, optionally with apex loss scaling"""
-        core = self.state.core
-        if core.use_fp16:
+        if self.use_fp16:
             try:
                 from apex import amp
-                with amp.scale_loss(core.train_out['loss'], core.optimizer) as scaled_loss:
+                with amp.scale_loss(self.train_out['loss'], self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             except ImportError:
                 pass
         else:
-            core.train_out['loss'].backward()
+            self.train_out['loss'].backward()
 
     @staticmethod
     def _set_callbacks(callbacks):
@@ -204,10 +209,9 @@ class Trainer:
         else:
             return dataset
 
-    @staticmethod
-    def _handle_rnn(core, loader):
+    def _handle_rnn(self, loader):
         # TODO relies on seq_len being set on the loader, remove loader dependency who should know about sequence len?
-        if hasattr(core.model, 'init_hidden'):
-            core.train_out['hidden'] = core.model.init_hidden(loader.batch_size)
+        if hasattr(self.model, 'init_hidden'):
+            self.train_out['hidden'] = self.model.init_hidden(loader.batch_size)
             if hasattr(loader, 'seq_len'):
-                core.seq_len = loader.seq_len
+                self.seq_len = loader.seq_len

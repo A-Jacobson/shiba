@@ -19,20 +19,18 @@ class LRFinder(Callback):
         self.lr = min_lr
         self._step_save = None
 
-    def on_train_begin(self, state):
-        core = state.core
-        logs = state.logs
-        self._step_save = state.logs.global_step
-        self.model_state = copy.deepcopy(core.model.state_dict())
-        self.optimizer_state = copy.deepcopy(core.optimizer.state_dict())
-        self.lr_multiplier = (self.max_lr / self.min_lr) ** (1 / (logs.num_batches - 1))
+    def on_train_begin(self, trainer):
+        self._step_save = trainer.global_step
+        self.model_state = copy.deepcopy(trainer.model.state_dict())
+        self.optimizer_state = copy.deepcopy(trainer.optimizer.state_dict())
+        self.lr_multiplier = (self.max_lr / self.min_lr) ** (1 / (trainer.num_batches - 1))
 
-    def on_batch_end(self, state):
-        loss = state.logs.metrics['train_loss']
-        if state.logs.step > 1 and loss > 4 * self.best_loss:
+    def on_batch_end(self, trainer):
+        loss = trainer.metrics['train_loss']  # smoothed loss from metrics
+        if trainer.step > 1 and loss > 4 * self.best_loss:
             plot_lr_find(self.lrs, self.losses)
-            state.core.model.load_state_dict(self.model_state)
-            state.core.optimizer.load_state_dict(self.optimizer_state)
+            trainer.model.load_state_dict(self.model_state)
+            trainer.optimizer.load_state_dict(self.optimizer_state)
             raise EndTraining('loss exploded, stop lr finder')
 
         else:
@@ -41,11 +39,11 @@ class LRFinder(Callback):
         self.losses.append(loss)
         self.lrs.append(self.lr)
         self.lr *= self.lr_multiplier
-        adjust_lr(state.core.optimizer, self.lr)
+        adjust_lr(trainer.optimizer, self.lr)
 
-    def on_train_end(self, state):
+    def on_train_end(self, trainer):
         # restore states and plot results
-        state.core.model.load_state_dict(self.model_state)
-        state.core.optimizer.load_state_dict(self.optimizer_state)
-        state.logs.global_step = self._step_save
+        trainer.model.load_state_dict(self.model_state)
+        trainer.optimizer.load_state_dict(self.optimizer_state)
+        trainer.global_step = self._step_save
         plot_lr_find(self.lrs, self.losses)

@@ -49,30 +49,32 @@ trainer.fit_one_cycle(train_dataset, val_dataset, epochs=10, max_lr=1e-3, callba
 shiba comes with sensible default steps that can be easily overridden by passing your own
  `train_step` and/or `val_step` functions to the constructor. 
 ```python
-def _default_train_step(batch, core):
+def default_train_step(trainer, batch):
     inputs, targets = batch
-    inputs = inputs.to(core.device, non_blocking=True)
-    targets = targets.to(core.device, non_blocking=True)
-    outputs = core.model(inputs)
-    loss = core.criterion(outputs, targets)
+    inputs = inputs.to(trainer.device, non_blocking=True)
+    targets = targets.to(trainer.device, non_blocking=True)
+    outputs = trainer.model(inputs)
+    loss = trainer.criterion(outputs, targets)
     return dict(loss=loss,
                 inputs=inputs,
                 outputs=outputs,
                 targets=targets)
                 
-
-def custom_step(batch, core):
-    """
-    core contains : model, optimizer, criterion, datasets, and device
-    """
-    # training stuff here!
+def rnn_step(trainer, batch):
+    """An Example RNN step, output is saved to trainer.train_out"""
+    hidden = repackage_hidden(trainer.train_out['hidden'])
+    inputs, targets = batch  # inputs.shape : (seq_len, batch_size)
+    outputs, hidden = trainer.model(inputs, hidden)
+    seq_len, batch_size, vocab_size = outputs.shape
+    loss = trainer.criterion(outputs.view(-1, vocab_size), targets.view(-1)) 
     return dict(loss=loss,
                 inputs=inputs,
                 outputs=outputs,
+                hidden=hidden,
                 targets=targets)
-                
 
-trainer = Trainer(model, criterion, train_step=custom_step)
+
+trainer = Trainer(model, criterion, train_step=rnn_step)
 ```
 
 ### Use Callbacks to easily add support for logging, Progress bars, metrics, and learning rate schedulers.
@@ -82,25 +84,25 @@ class ProgressBar(Callback):
         self.train_pbar = None
         self.epoch_pbar = None
 
-    def on_train_begin(self, state):
-        epochs = state.logs.epochs
+    def on_train_begin(self, trainer):
+        epochs = trainer.logs.epochs
         self.train_pbar = tqdm(range(epochs), total=epochs, unit='epochs')
 
-    def on_epoch_begin(self, state):
-        self.epoch_pbar = tqdm(total=state.logs.num_batches, unit='b')
+    def on_epoch_begin(self, trainer):
+        self.epoch_pbar = tqdm(total=trainer.logs.num_batches, unit='b')
 
-    def on_epoch_end(self, state):
+    def on_epoch_end(self, trainer):
         self.train_pbar.update()
         self.epoch_pbar.close()
 
-    def on_batch_end(self, state):
+    def on_batch_end(self, trainer):
         self.epoch_pbar.update()
-        self.epoch_pbar.set_postfix(state.logs.metrics)
+        self.epoch_pbar.set_postfix(trainer.logs.metrics)
 
-    def on_eval_end(self, state):
-        self.epoch_pbar.set_postfix(state.logs.metrics)
+    def on_eval_end(self, trainer):
+        self.epoch_pbar.set_postfix(trainer.logs.metrics)
 
-    def on_train_end(self, state):
+    def on_train_end(self, trainer):
         self.train_pbar.close()
 
  ```
