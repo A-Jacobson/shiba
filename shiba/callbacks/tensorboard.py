@@ -21,7 +21,8 @@ class TensorBoard(Callback):
 
     def on_batch_end(self, trainer):
         self.writer.add_scalar('lr', get_lr(trainer.optimizer), trainer.global_step)
-        if get_momentum(trainer.optimizer):
+        momentum = get_momentum(trainer.optimizer)
+        if momentum:
             self.writer.add_scalar('momentum', momentum, trainer.global_step)
         for metric, value in trainer.metrics.items():
             if 'train' in metric:

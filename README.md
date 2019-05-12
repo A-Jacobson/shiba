@@ -85,11 +85,10 @@ class ProgressBar(Callback):
         self.epoch_pbar = None
 
     def on_train_begin(self, trainer):
-        epochs = trainer.logs.epochs
-        self.train_pbar = tqdm(range(epochs), total=epochs, unit='epochs')
+        self.train_pbar = tqdm(total=trainer.epochs, unit='epochs')
 
     def on_epoch_begin(self, trainer):
-        self.epoch_pbar = tqdm(total=trainer.logs.num_batches, unit='b')
+        self.epoch_pbar = tqdm(total=trainer.num_batches, unit='b')
 
     def on_epoch_end(self, trainer):
         self.train_pbar.update()
