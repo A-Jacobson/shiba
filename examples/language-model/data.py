@@ -85,7 +85,7 @@ class LMLoader:
     def get_batch(self, i, seq_len):
         seq_len = min(seq_len, len(self.data) - 1 - i)
         inputs = self.data[i:i+seq_len]
-        targets = self.data[i+1:i+1+seq_len] # get the next words
+        targets = self.data[i+1:i+1+seq_len]  # get the next words
         return inputs, targets
     
     def __iter__(self):
@@ -109,6 +109,4 @@ class LMLoader:
             
     def __len__(self):
         # will slightly overestimate if shuffle_seq_len == True
-        if self.variable_length:
-            return len(self.data) // (self.seq_len + 2)
         return len(self.data) // self.seq_len
