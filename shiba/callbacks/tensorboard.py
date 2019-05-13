@@ -34,8 +34,8 @@ class TensorBoard(Callback):
                 self.writer.add_scalar(metric, value, trainer.global_step)
 
         if self.vis_function:
-            vis = self.vis_function(trainer.val_out['inputs'],
-                                    trainer.val_out['outputs'],
-                                    trainer.val_out['targets'])
+            vis = self.vis_function(trainer.out['inputs'],
+                                    trainer.out['outputs'],
+                                    trainer.out['targets'])
             for name, value in vis.items():
                 self.writer.add_image(name, value, trainer.global_step)

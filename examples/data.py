@@ -1,6 +1,8 @@
 import os
 import torch
 import numpy as np
+# from multiprocessing.dummy import Pool
+
 
 # adapted from pytorch examples
 class Dictionary(object):
@@ -62,8 +64,6 @@ class LMLoader:
       └ f l r x ┘.
       One batchified, return chunks of (batch_size, seq_len), no overlap,
       with the next word in the sequence as the target.
-      
-      
     """
     def __init__(self, data, batch_size=4, seq_len=35, variable_length=False, device='cpu'):
         self.data = self.batchify(data, batch_size, device)
@@ -85,8 +85,8 @@ class LMLoader:
     def get_batch(self, i, seq_len):
         seq_len = min(seq_len, len(self.data) - 1 - i)
         inputs = self.data[i:i+seq_len]
-        targets = self.data[i+1:i+1+seq_len].view(-1) # get the next words
-        return inputs, inputs
+        targets = self.data[i+1:i+1+seq_len] # get the next words
+        return inputs, targets
     
     def __iter__(self):
         return self
@@ -108,8 +108,7 @@ class LMLoader:
             raise StopIteration
             
     def __len__(self):
-        ## will slightly overestimate if shuffle_seq_len == True
+        # will slightly overestimate if shuffle_seq_len == True
         if self.variable_length:
             return len(self.data) // (self.seq_len + 2)
-        return len(self.data) // self.seq_len 
-        
+        return len(self.data) // self.seq_len

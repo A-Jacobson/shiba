@@ -3,11 +3,10 @@ import warnings
 import torch
 import torch.backends.cudnn as cudnn
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Dataset
 
 from shiba.callbacks import Compose
 from shiba.callbacks import Metric, ProgressBar, LRFinder, OneCycle
-from shiba.steps import default_train_step, default_eval_step
+from shiba.steps import default_step
 from shiba.utils import adjust_lr, EndTraining, model_to_devices
 
 
@@ -30,8 +29,8 @@ class Trainer:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.use_fp16 = False
 
-        self.train_out = dict()
-        self.val_out = dict()
+        self.out = dict()
+        # self.out = dict()
         self.metrics = dict()
 
         self.step = None
@@ -43,11 +42,10 @@ class Trainer:
 
         self.callbacks = []
 
-        self.train_step = train_step or default_train_step
-        self.eval_step = eval_step or default_eval_step
+        self.train_step = train_step or default_step
+        self.eval_step = eval_step or self.train_step
 
-    def fit(self, train_dataset, val_dataset=None, epochs=1, lr=3e-4,
-            batch_size=32, num_workers=4, device_ids=None, callbacks=None):
+    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=None,):
         """
         Args:
             train_dataset: Pytorch Dataset or loader
@@ -67,7 +65,6 @@ class Trainer:
         adjust_lr(self.optimizer, lr)
         callbacks = self._set_callbacks(callbacks)
         self.model = model_to_devices(self.model, self.device, device_ids)
-        train_loader = self._set_loader(train_dataset, batch_size, num_workers, shuffle=True)
         self.batch_size = train_loader.batch_size  # HACK, set like this to cover LMloader.
         self.num_batches = len(train_loader)
         # try except here lets us break training within a callback by raising EndTraining error.
@@ -76,20 +73,19 @@ class Trainer:
             for epoch in range(epochs):
                 self.model.train()
                 # cache hidden trainer for sequence models, core is passed to step_function
-                self._handle_rnn(train_dataset)  # check if rnn and cache hidden trainer for sequence models
+                self.out['hidden'] = self.init_hidden()
                 callbacks.on_epoch_begin(self)
                 for batch in train_loader:
                     callbacks.on_batch_begin(self)
                     self.optimizer.zero_grad()
-                    self.train_out = self.train_step(self, batch)
+                    self.out = self.train_step(self, batch)
                     self.backward()
                     callbacks.on_batch_end(self)
                     self.optimizer.step()
                     self.step += 1
                     self.global_step += 1
-                if val_dataset:
-                    self.evaluate(val_dataset, batch_size, num_workers=4,
-                                  device_ids=None, callbacks=callbacks)
+                if val_loader:
+                    self.evaluate(val_loader, callbacks=callbacks)
                 callbacks.on_epoch_end(self)
                 self.epoch += 1
             callbacks.on_train_end(self)
@@ -97,20 +93,20 @@ class Trainer:
         except EndTraining as e:
             pass
 
-    def evaluate(self, dataset, batch_size=32, num_workers=4, device_ids=None, callbacks=None):
+    @torch.no_grad()
+    def evaluate(self, data_loader, callbacks=None, device_ids=None):
         callbacks = self._set_callbacks(callbacks)
-        val_loader = self._set_loader(dataset, batch_size, num_workers, shuffle=False)
         self.model = model_to_devices(self.model, self.device, device_ids)
         self.model.eval()
-        self._handle_rnn(val_loader)  # check if rnn and cache hidden trainer for sequence models
-        for batch in val_loader:
+        self.out['hidden'] = self.init_hidden()  # check if rnn and cache hidden trainer for sequence models
+        for batch in data_loader:
             callbacks.on_eval_batch_begin(self)
-            self.val_out = self.eval_step(self, batch)
+            self.out = self.eval_step(self, batch)
             callbacks.on_eval_batch_end(self)
         callbacks.on_eval_end(self)
         self.callbacks = callbacks.callbacks
 
-    def find_lr(self, dataset, min_lr=1e-7, max_lr=1, batch_size=32, num_workers=4):
+    def find_lr(self, data_loader, min_lr=1e-7, max_lr=1):
         """calls fit with LRFinder callback
         Args:
             dataset:
@@ -120,20 +116,18 @@ class Trainer:
             num_workers:
         """
         callbacks = [LRFinder(min_lr=min_lr, max_lr=max_lr)]
-        self.fit(dataset, epochs=1, batch_size=batch_size, num_workers=num_workers, callbacks=callbacks)
+        self.fit(data_loader, epochs=1, callbacks=callbacks)
 
-    def fit_one_cycle(self, train_dataset, val_dataset=None, epochs=1, batch_size=32, max_lr=1e-3,
+    def fit_one_cycle(self, train_loader, val_loader=None, epochs=1, max_lr=1e-3, callbacks=None,
                       end_percentage=0.1, scale_percentage=None, maximum_momentum=0.95, minimum_momentum=0.85,
-                      num_workers=4, device_ids=None, callbacks=None):
+                      device_ids=None):
         one_cycle = OneCycle(max_lr=max_lr,
                              end_percentage=end_percentage,
                              scale_percentage=scale_percentage,
                              maximum_momentum=maximum_momentum,
                              minimum_momentum=minimum_momentum)
         callbacks = callbacks + [one_cycle] if callbacks else [one_cycle]
-        self.fit(train_dataset, val_dataset, epochs=epochs,
-                 batch_size=batch_size, num_workers=num_workers,
-                 device_ids=device_ids, callbacks=callbacks)
+        self.fit(train_loader, val_loader, epochs=epochs, callbacks=callbacks, device_ids=device_ids)
 
     @torch.no_grad()
     def predict(self, batch):
@@ -155,7 +149,7 @@ class Trainer:
         self.global_step = checkpoint['global_step']
 
     def save_model_trace(self, path, example_inputs=None):
-        example_inputs = example_inputs if example_inputs else self.train_out['inputs']
+        example_inputs = example_inputs if example_inputs else self.out['inputs']
         trace = torch.jit.trace(self.model, example_inputs)
         trace.save(path)
 
@@ -183,12 +177,12 @@ class Trainer:
         if self.use_fp16:
             try:
                 from apex import amp
-                with amp.scale_loss(self.train_out['loss'], self.optimizer) as scaled_loss:
+                with amp.scale_loss(self.out['loss'], self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             except ImportError:
                 pass
         else:
-            self.train_out['loss'].backward()
+            self.out['loss'].backward()
 
     @staticmethod
     def _set_callbacks(callbacks):
@@ -200,18 +194,8 @@ class Trainer:
         else:
             return callbacks
 
-    @staticmethod
-    # TODO Should we even handle non-pytorch batch iterators??
-    def _set_loader(dataset, batch_size, num_workers, shuffle):
-        if isinstance(dataset, Dataset):
-            return DataLoader(dataset, batch_size, shuffle=shuffle,
-                              pin_memory=True, num_workers=num_workers)
-        else:
-            return dataset
-
-    def _handle_rnn(self, loader):
-        # TODO relies on seq_len being set on the loader, remove loader dependency who should know about sequence len?
+    def init_hidden(self):
+        hidden = None
         if hasattr(self.model, 'init_hidden'):
-            self.train_out['hidden'] = self.model.init_hidden(loader.batch_size)
-            if hasattr(loader, 'seq_len'):
-                self.seq_len = loader.seq_len
+            hidden = self.model.init_hidden(self.batch_size)
+        return hidden

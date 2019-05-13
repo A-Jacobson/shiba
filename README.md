@@ -61,8 +61,8 @@ def default_train_step(trainer, batch):
                 targets=targets)
                 
 def rnn_step(trainer, batch):
-    """An Example RNN step, output is saved to trainer.train_out"""
-    hidden = repackage_hidden(trainer.train_out['hidden'])
+    """An Example RNN step, output is saved to trainer.out"""
+    hidden = repackage_hidden(trainer.out['hidden'])
     inputs, targets = batch  # inputs.shape : (seq_len, batch_size)
     outputs, hidden = trainer.model(inputs, hidden)
     seq_len, batch_size, vocab_size = outputs.shape

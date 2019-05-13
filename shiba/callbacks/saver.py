@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import torch
-
 from shiba.callbacks import Callback
 
 
@@ -29,7 +27,7 @@ class Save(Callback):
         if not self.value:
             raise ValueError(
                 f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')
-        value = self.value if self.mode == 'min' else - self.value  # flip comparison if mode = max
+        value = self.value if self.mode == 'min' else -self.value  # flip comparison if mode = max
         if (self.last_save == self.interval) and value < self.best_value:
             self.save_dir.mkdir(parents=True, exist_ok=True)
             save_path = self.save_dir / f'epoch:{trainer.epoch}_{self.monitor}:{self.value:.3f}.pth'

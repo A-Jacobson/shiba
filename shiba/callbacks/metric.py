@@ -30,7 +30,7 @@ class Metric(Callback):
 
     @torch.no_grad()
     def on_batch_end(self, trainer):
-        score = self.transform(trainer.train_out)
+        score = self.transform(trainer.out)
         if self.score_func:
             if isinstance(score, tuple):
                 score = self.score_func(*score)
@@ -41,7 +41,7 @@ class Metric(Callback):
 
     @torch.no_grad()
     def on_eval_batch_end(self, trainer):
-        score = self.transform(trainer.val_out)
+        score = self.transform(trainer.out)
         if self.score_func:
             if isinstance(score, tuple):
                 score = self.score_func(*score)

@@ -2,8 +2,6 @@ from torch import nn
 
 
 class LSTMLM(nn.Module):
-    """Container module with an encoder, a recurrent module, and a decoder."""
-
     def __init__(self, vocab_size, embedding_size, hidden_size, nlayers, dropout=0.5, tie_weights=False):
         super(LSTMLM, self).__init__()
         self.encoder = nn.Embedding(vocab_size, embedding_size)
@@ -31,8 +29,8 @@ class LSTMLM(nn.Module):
         self.decoder.weight.data.uniform_(-0.1, 0.1)
 
     def forward(self, input, hidden):
-        embedding = self.dropout(self.encoder(input)) # embed input
-        output, hidden = self.lstm(embedding, hidden) # encode input given previous state
+        embedding = self.dropout(self.encoder(input))  # transpose (batch, seq) -- (seq, batch) and embed
+        output, hidden = self.lstm(embedding, hidden)  # encode input given previous state
         return self.decoder(output), hidden
 
     def init_hidden(self, batch_size):
