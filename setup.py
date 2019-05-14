@@ -12,5 +12,5 @@ setup(
         'Development Status :: 3 - Alpha',
         'Programming Language :: Python :: 3.6'
     ],
-    packages=find_packages(exclude=['tests', 'examples', 'assets'])
+    packages=find_packages(exclude=['tests', 'examples'])
 )
