@@ -1,4 +1,4 @@
-from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 from shiba.utils import get_lr, get_momentum
 
 from .callbacks import Callback
