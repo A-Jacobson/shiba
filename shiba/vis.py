@@ -1,12 +1,11 @@
 import math
-from pkg_resources import resource_filename
+import io
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib import ticker
-from PIL import Image, ImageDraw, ImageFont
-from torchvision.transforms.functional import to_pil_image, to_tensor
+from PIL import Image
 from torchvision.utils import make_grid
 
 COLORS = [(94, 79, 162),  # purple
@@ -37,20 +36,21 @@ def plot_color_legend(labels, colors=COLORS):
     return ax
 
 
-def show_images(images, num_columns=4, titles=None, scale=6):
+def show_images(images, num_columns=4, titles=None, scale=6, as_array=False, title_colors=None):
     """
     Arguments:
         images (list): list of images.
         num_columns (int): number of columns.
         titles (list, optional): list of image titles
     """
+    title_colors = title_colors or ['b'] * len(titles)
     if isinstance(images[0], Image.Image):
         images = [np.array(image.copy()) for image in images]
     if isinstance(images[0], torch.Tensor):
         images = [image.permute(1, 2, 0) if image.dim() == 3 else image.float() for image in images]
 
     num_rows = math.ceil(len(images) / num_columns)
-    fig, axes = plt.subplots(nrows=num_rows, ncols=num_columns,
+    figure, axes = plt.subplots(nrows=num_rows, ncols=num_columns,
                              figsize=(num_columns * scale, num_rows * scale))
 
     blank_image = np.zeros_like(images[0])
@@ -58,16 +58,23 @@ def show_images(images, num_columns=4, titles=None, scale=6):
         if i >= len(images):
             axis.imshow(blank_image)
             if titles:
-                axis.set(title='')
+                axis.set_title('', color='bl')
         else:
             axis.imshow(images[i])
             if titles:
-                axis.set(title=titles[i])
+                axis.set_title(titles[i], color=title_colors[i])
         axis.axis('off')
 
-    fig.subplots_adjust(hspace=0.08, wspace=0)
+    figure.subplots_adjust(hspace=0.08, wspace=0)
     if titles:
-        fig.subplots_adjust(hspace=0.08, wspace=0)
+        figure.subplots_adjust(hspace=0.08, wspace=0)
+    plt.tight_layout()
+    if as_array:
+        buff = io.BytesIO()
+        plt.savefig(buff, format='png')
+        plt.close(figure)
+        buff.seek(0)
+        return torch.from_numpy(np.array(Image.open(buff))).permute(2, 0, 1)
 
 
 def _apply_mask(image, mask, color_rgb=(66, 244, 223), alpha=0.7):
@@ -130,19 +137,6 @@ def apply_masks(image, masks, colors=COLORS, alpha=0.7):
     return image
 
 
-def annotate_tensor(tensor, text, color=(255, 255, 255), size=None, position=None):
-    scale = int(256 / tensor.shape[1])
-    if not size:
-        size = int(12 / scale) + 6
-    if not position:
-        position = (int(10 / scale), int(10 / scale))
-    image = to_pil_image(tensor)
-    font = ImageFont.truetype(resource_filename(__name__, 'assets/Roboto-Bold.ttf'), size=size)
-    draw = ImageDraw.Draw(image)
-    draw.text(position, text, color, font)
-    return to_tensor(image)
-
-
 def vis_segment(inputs, outputs, targets, nrow=4):
     outputs_grid = make_grid(outputs.sigmoid() > 0.5)
     inputs_grid = make_grid(inputs[:3, ...], nrow=nrow)
@@ -152,16 +146,19 @@ def vis_segment(inputs, outputs, targets, nrow=4):
     return dict(preddictions=predictions, targets=targets)
 
 
-def vis_classify(inputs, outputs, targets, nrow=4):
+def vis_classify(inputs, outputs, targets, classes=None, num_columns=6, scale=3):
     predictions = outputs.argmax(dim=1)
-    annotated = []
-    for image, pred, target in zip(inputs, predictions, targets):
-        text = f'p: {pred}, t:{target}'
-        color = (0, 255, 0)  # green
-        if pred != target:
-            color = (255, 0, 0)  # red
-        annotated.append(annotate_tensor(image, text, color))
-    grid = make_grid(annotated, nrow=nrow)
+    titles = []
+    title_colors = []
+    for pred, target in zip(predictions, targets):
+        pred, target = pred.item(), target.item()
+        if classes:
+            pred, target = classes[pred], classes[target]
+        titles.append(f'pred: {pred} | target: {target}')
+        title_colors.append('b' if pred == target else 'r')
+    grid = show_images(inputs[:, :3, ...], num_columns=num_columns,
+                       titles=titles, title_colors=title_colors,
+                       as_array=True, scale=scale)
     return dict(vis_classify=grid)
 
 
