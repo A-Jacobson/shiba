@@ -160,3 +160,74 @@ def get_lr(optimizer):
 
 def get_momentum(optimizer):
     return optimizer.param_groups[0].get('momentum')
+
+
+class ConfusionMeter:
+
+    def __init__(self, num_classes):
+        super(ConfusionMeter, self).__init__()
+        self.matrix = np.ndarray((num_classes, num_classes), dtype=np.int32)
+        self.num_classes = num_classes
+        self.reset()
+
+    def reset(self):
+        self.matrix.fill(0)
+
+    def update(self, predicted, target):
+        """Computes the confusion matrix of K x K size where K is no of classes
+        Args:
+            predicted (tensor): Can be an N x K tensor of predicted scores obtained from
+                the model for N examples and K classes or an N-tensor of
+                integer values between 0 and K-1.
+            target (tensor): Can be a N-tensor of integer values assumed to be integer
+                values between 0 and K-1 or N x K tensor, where targets are
+                assumed to be provided as one-hot vectors
+        """
+        predicted = predicted.detach().cpu().numpy()
+        target = target.detach().cpu().numpy()
+
+        assert predicted.shape[0] == target.shape[0], \
+            'number of targets and predicted outputs do not match'
+
+        if np.ndim(predicted) != 1:
+            assert predicted.shape[1] == self.num_classes, \
+                'number of predictions does not match size of confusion matrix'
+            predicted = np.argmax(predicted, 1)
+        else:
+            assert (predicted.max() < self.num_classes) and (predicted.min() >= 0), \
+                'predicted values are not between 1 and k'
+
+        onehot_target = np.ndim(target) != 1
+        if onehot_target:
+            assert target.shape[1] == self.num_classes, \
+                'Onehot target does not match size of confusion matrix'
+            assert (target >= 0).all() and (target <= 1).all(), \
+                'in one-hot encoding, target values should be 0 or 1'
+            assert (target.sum(1) == 1).all(), \
+                'multi-label setting is not supported'
+            target = np.argmax(target, 1)
+        else:
+            assert (predicted.max() < self.num_classes) and (predicted.min() >= 0), \
+                'predicted values are not between 0 and k-1'
+
+        # hack for bincounting 2 arrays together
+        x = predicted + self.num_classes * target
+        bincount_2d = np.bincount(x.astype(np.int32),
+                                  minlength=self.num_classes ** 2)
+        assert bincount_2d.size == self.num_classes ** 2
+        matrix = bincount_2d.reshape((self.num_classes, self.num_classes))
+
+        self.matrix += matrix
+
+    def value(self, normalized=False):
+        """
+        Returns:
+            Confustion matrix of K rows and K columns, where rows corresponds
+            to ground-truth targets and columns corresponds to predicted
+            targets.
+        """
+        if normalized:
+            matrix = self.matrix.astype(np.float32)
+            return np.around(matrix / matrix.sum(axis=1)[:, None], decimals=2)
+        else:
+            return self.matrix

@@ -1,7 +1,9 @@
 from tensorboardX import SummaryWriter
 from shiba.utils import get_lr, get_momentum
+from shiba.vis import plot_confusion_matrix
 
 from .callbacks import Callback
+from .confusion import ConfusionMatrix
 
 
 class TensorBoard(Callback):
@@ -20,7 +22,7 @@ class TensorBoard(Callback):
             self.writer.add_text('hyperparams', text, trainer.global_step)
 
     def on_batch_end(self, trainer):
-        self.writer.add_scalar('lr', get_lr(trainer.optimizer), trainer.global_step)
+        self.writer.add_scalar('learning_rate', get_lr(trainer.optimizer), trainer.global_step)
         momentum = get_momentum(trainer.optimizer)
         if momentum:
             self.writer.add_scalar('momentum', momentum, trainer.global_step)
@@ -39,3 +41,24 @@ class TensorBoard(Callback):
                                     trainer.out['targets'])
             for name, value in vis.items():
                 self.writer.add_image(name, value, trainer.global_step)
+
+        cb = self.get_callback(trainer.callbacks, ConfusionMatrix)
+        if cb:
+            train_vis = plot_confusion_matrix(cb.train_matrix, cb.class_names, as_array=True)
+            val_vis = plot_confusion_matrix(cb.val_matrix, cb.class_names, as_array=True)
+            self.writer.add_image('train_confusion_matrix', train_vis, trainer.global_step)
+            self.writer.add_image('val_confusion_matrix', val_vis, trainer.global_step)
+
+    def get_callback(self, callbacks, callback):
+        """
+        return the first instance of a callback in the list of callbacks o(n)
+        """
+        cb = None
+        try:
+            cb = next(cb for cb in callbacks if isinstance(cb, callback))
+        except StopIteration:
+            pass
+        return cb
+
+
+

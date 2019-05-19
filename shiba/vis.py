@@ -7,6 +7,7 @@ import torch
 from matplotlib import ticker
 from PIL import Image
 from torchvision.utils import make_grid
+import itertools
 
 COLORS = [(94, 79, 162),  # purple
           (50, 136, 189),  # purple
@@ -71,7 +72,7 @@ def show_images(images, num_columns=4, titles=None, scale=6, as_array=False, tit
     plt.tight_layout()
     if as_array:
         buff = io.BytesIO()
-        plt.savefig(buff, format='png')
+        plt.savefig(buff, format='png', bbox_inches="tight")
         plt.close(figure)
         buff.seek(0)
         return torch.from_numpy(np.array(Image.open(buff))).permute(2, 0, 1)
@@ -174,3 +175,33 @@ def plot_lr_find(lrs, losses):
     plt.xlabel('Learning Rate (Log Scale)')
     plt.grid()
     plt.show()
+
+
+def plot_confusion_matrix(cm, class_names=None, as_array=False):
+    """
+    Returns a matplotlib figure containing the plotted confusion matrix.
+
+    Args:
+    cm (array, shape = [n, n]): a confusion matrix of integer classes
+    class_names (array, shape = [n]): String names of the integer classes
+    """
+    figure = plt.figure(figsize=(8, 8))
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Purples)
+    class_names = class_names or np.arange(len(cm))
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+    threshold = cm.max() / 3.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        color = "white" if cm[i, j] > threshold else "black"
+        plt.text(j, i, cm[i, j], horizontalalignment="center", color=color)
+
+    plt.tight_layout()
+    plt.ylabel('True label', fontsize=14)
+    plt.xlabel('Predicted label', fontsize=14)
+    if as_array:
+        buff = io.BytesIO()
+        plt.savefig(buff, format='png', bbox_inches="tight")
+        plt.close(figure)
+        buff.seek(0)
+        return torch.from_numpy(np.array(Image.open(buff))).permute(2, 0, 1)

@@ -53,6 +53,8 @@ class Metric(Callback):
     def on_epoch_end(self, trainer):
         self.train_history.append(self.train_meter.avg)
         self.val_history.append(self.val_meter.avg)
+
+    def on_epoch_begin(self, trainer):
         self.train_meter.reset()
         self.val_meter.reset()
 

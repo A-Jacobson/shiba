@@ -8,6 +8,7 @@ from .schedulers import PytorchScheduler, ReduceLROnPlateau, OneCycle
 from .tensorboard import TensorBoard
 from .lamb import LambdaCallback
 from .polyaxon import PolyaxonLogger
+from .confusion import ConfusionMatrix
 
-__all__ = ('Metric', 'TensorBoard', 'ProgressBar', 'Callback', 'Compose', 'Debug',
+__all__ = ('Metric', 'TensorBoard', 'ProgressBar', 'Callback', 'Compose', 'Debug', 'ConfusionMatrix',
            'LRFinder', 'Save', 'PytorchScheduler', 'ReduceLROnPlateau', 'OneCycle', 'LambdaCallback', 'PolyaxonLogger')
