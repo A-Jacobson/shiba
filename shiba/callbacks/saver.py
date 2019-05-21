@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from shiba.callbacks import Callback
+from .callbacks import Callback
 
 
 class Save(Callback):
@@ -31,10 +31,14 @@ class Save(Callback):
         if (self.last_save == self.interval) and value < self.best_value:
             self.save_dir.mkdir(parents=True, exist_ok=True)
             save_path = self.save_dir / f'epoch:{trainer.epoch}_{self.monitor}:{self.value:.3f}.pth'
+            trainer.save(save_path)
             self.past_checkpoints.append([self.value, save_path])
             # remove worst checkpoint before saving new checkpoint, also compare new checkpoint
             if len(self.past_checkpoints) > self.max_saves:
-                worst = min(self.past_checkpoints)
+                if self.mode == 'min':
+                    worst = max(self.past_checkpoints)
+                else:
+                    worst = min(self.past_checkpoints)
                 self.past_checkpoints.remove(worst)
                 value, path = worst
                 trainer.save(save_path)

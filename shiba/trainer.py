@@ -153,15 +153,18 @@ class Trainer:
         trace = torch.jit.trace(self.model, example_inputs)
         trace.save(path)
 
-    def to_fp16(self, opt_level="01"):
+    def to_fp16(self, opt_level="O1"):
         amp_available = False
         try:
             from apex import amp
             amp_available = True
+            print('mixed precision training enabled.')
         except ImportError as e:
-            warnings.warn(f"Error '{e}'' during importing apex library. To use mixed precison"
-                          " you should install it from https://github.com/NVIDIA/apex")
+            warnings.warn(f"Error '{e}'' during importing apex library. To use mixed precision"
+                          " you should install it by running  "
+                          'pip install git+https://github.com/NVIDIA/apex.git -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext"')
         if amp_available:
+            self.model.to('cuda')
             self.model, self.optimizer = amp.initialize(self.model, self.optimizer,
                                                         opt_level=opt_level, verbosity=0)
             self.use_fp16 = True
