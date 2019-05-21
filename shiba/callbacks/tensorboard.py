@@ -14,7 +14,7 @@ class TensorBoard(Callback):
         self.hyperparams = hyperparams
 
     def on_train_begin(self, trainer):
-        self.writer = SummaryWriter(log_dir=self.log_dir)
+        self.writer = SummaryWriter(logdir=self.log_dir)
         if self.hyperparams:
             text = ''
             for name, value in self.hyperparams.items():
