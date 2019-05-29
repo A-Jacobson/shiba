@@ -157,7 +157,7 @@ def vis_classify(inputs, outputs, targets, classes=None, num_columns=6, scale=3)
             pred, target = classes[pred], classes[target]
         titles.append(f'pred: {pred} | target: {target}')
         title_colors.append('b' if pred == target else 'r')
-    grid = show_images(inputs[:, :3, ...], num_columns=num_columns,
+    grid = show_images(inputs[:, :3, ...].cpu(), num_columns=num_columns,
                        titles=titles, title_colors=title_colors,
                        as_array=True, scale=scale)
     return dict(vis_classify=grid)
