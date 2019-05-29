@@ -44,7 +44,7 @@ def show_images(images, num_columns=4, titles=None, scale=6, as_array=False, tit
         num_columns (int): number of columns.
         titles (list, optional): list of image titles
     """
-    title_colors = title_colors or ['b'] * len(titles)
+    title_colors = title_colors or ['b'] * len(images)
     if isinstance(images[0], Image.Image):
         images = [np.array(image.copy()) for image in images]
     if isinstance(images[0], torch.Tensor):
