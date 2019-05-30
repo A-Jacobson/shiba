@@ -27,7 +27,7 @@ class ProgressBar(Callback):
 
     def on_eval_begin(self, trainer):
         if self.val_bar:
-            self.val_pbar = tqdm(total=trainer.num_batches, unit='b')
+            self.val_pbar = tqdm(total=trainer.num_val_batches, unit='b')
 
     def on_eval_batch_end(self, trainer):
         if self.val_bar:
