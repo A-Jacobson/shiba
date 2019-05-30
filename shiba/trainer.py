@@ -149,7 +149,7 @@ class Trainer:
         self.global_step = checkpoint['global_step']
 
     def save_model_trace(self, path, example_inputs=None):
-        example_inputs = example_inputs if example_inputs else self.out['inputs']
+        example_inputs = example_inputs if isinstance(example_inputs, torch.Tensor) else self.out['inputs']
         trace = torch.jit.trace(self.model, example_inputs)
         trace.save(path)
 
