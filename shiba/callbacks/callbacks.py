@@ -28,6 +28,9 @@ class Callback:
     def on_train_end(self, trainer):
         pass
 
+    def on_eval_begin(self, trainer):
+        pass
+
     def on_eval_end(self, trainer):
         pass
 
@@ -62,6 +65,10 @@ class Compose:
     def on_eval_batch_end(self, trainer):
         for callback in self.callbacks:
             callback.on_eval_batch_end(trainer)
+
+    def on_eval_begin(self, trainer):
+        for callback in self.callbacks:
+            callback.on_eval_begin(trainer)
 
     def on_eval_end(self, trainer):
         for callback in self.callbacks:

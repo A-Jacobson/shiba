@@ -38,6 +38,7 @@ class Trainer:
         self.epochs = None
         self.global_step = 0
         self.num_batches = None
+        self.num_val_batches = None
         self.batch_size = None
 
         self.callbacks = []
@@ -45,7 +46,7 @@ class Trainer:
         self.train_step = train_step or default_step
         self.eval_step = eval_step or self.train_step
 
-    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=None,):
+    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=None):
         """
         Args:
             train_dataset: Pytorch Dataset or loader
@@ -63,7 +64,9 @@ class Trainer:
         self.epoch = 0
         self.epochs = epochs
         adjust_lr(self.optimizer, lr)
-        callbacks = self._set_callbacks(callbacks)
+        default_callbacks = [ProgressBar(),
+                             Metric('loss', transform=lambda x: x['loss'].item())]
+        callbacks = self._set_callbacks(callbacks, default_callbacks)
         self.model = model_to_devices(self.model, self.device, device_ids)
         self.batch_size = train_loader.batch_size  # HACK, set like this to cover LMloader.
         self.num_batches = len(train_loader)
@@ -94,11 +97,15 @@ class Trainer:
             pass
 
     @torch.no_grad()
-    def evaluate(self, data_loader, callbacks=None, device_ids=None):
-        callbacks = self._set_callbacks(callbacks)
+    def evaluate(self, data_loader, callbacks=None, device_ids=None, pbar=True):
+        default_callbacks = [ProgressBar(val_bar=pbar),
+                             Metric('loss', transform=lambda x: x['loss'].item())]
+        callbacks = self._set_callbacks(callbacks, default_callbacks)
         self.model = model_to_devices(self.model, self.device, device_ids)
         self.model.eval()
         self.out['hidden'] = self.init_hidden()  # check if rnn and cache hidden trainer for sequence models
+        self.num_val_batches = len(data_loader)
+        callbacks.on_eval_begin(self)
         for batch in data_loader:
             callbacks.on_eval_batch_begin(self)
             self.out = self.eval_step(self, batch)
@@ -188,8 +195,7 @@ class Trainer:
             self.out['loss'].backward()
 
     @staticmethod
-    def _set_callbacks(callbacks):
-        default_callbacks = [ProgressBar(), Metric('loss', transform=lambda x: x['loss'].item())]
+    def _set_callbacks(callbacks, default_callbacks):
         if callbacks and not isinstance(callbacks, Compose):
             return Compose(default_callbacks + callbacks)
         elif not callbacks:

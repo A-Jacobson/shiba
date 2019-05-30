@@ -147,14 +147,14 @@ def vis_segment(inputs, outputs, targets, nrow=4):
     return dict(preddictions=predictions, targets=targets)
 
 
-def vis_classify(inputs, outputs, targets, classes=None, num_columns=4, scale=6):
+def vis_classify(inputs, outputs, targets, class_names=None, num_columns=4, scale=6):
     predictions = outputs.argmax(dim=1)
     titles = []
     title_colors = []
     for pred, target in zip(predictions, targets):
         pred, target = pred.item(), target.item()
-        if classes:
-            pred, target = classes[pred], classes[target]
+        if class_names:
+            pred, target = class_names[pred], class_names[target]
         titles.append(f'pred: {pred}\ntarget: {target}')
         title_colors.append('b' if pred == target else 'r')
     grid = show_images(inputs[:, :3, ...].cpu(), num_columns=num_columns,
