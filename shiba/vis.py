@@ -211,7 +211,7 @@ def plot_text(outputs, targets, i2w=None, limit=5, as_array=False):
     import seaborn as sns
     targets = targets.t().cpu()[:limit]
     preds = outputs.argmax(dim=-1).t().cpu()[:limit]
-
+    diff = (targets != preds)
     figure, axes = plt.subplots(nrows=limit,
                                 figsize=(targets.shape[1], limit), sharex=True)
 
@@ -219,13 +219,14 @@ def plot_text(outputs, targets, i2w=None, limit=5, as_array=False):
         return np.array([i2w[i] for i in indices])
 
     for i in range(limit):
-        indices = np.stack([targets[i], preds[i]])
+
+        diff = np.stack([diff[i], diff[i]])  # highlight mis-predicted words
         if i2w:
-            text = np.stack([to_words(targets[i], i2w),
+            text = np.stack([to_words(targets[i], i2w), # if dict, show words
                              to_words(preds[i], i2w)])
         else:
-            text = indices
-        sns.heatmap(indices, cmap=plt.cm.Purples, annot=text, fmt='s', cbar=False,
+            text = np.stack([targets[i], preds[i]])  # else show word indices
+        sns.heatmap(diff, cmap=plt.cm.Purples, annot=text, fmt='s', cbar=False,
                     yticklabels=[f'target\n{i}  ', f'pred\n{i}  '],
                     xticklabels=False, ax=axes[i])
         plt.sca(axes[i])
