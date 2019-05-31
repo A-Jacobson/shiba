@@ -92,7 +92,7 @@ def repackage_hidden(h):
 #         num_parameters += np.prod(parameter.shape)
 #     return num_parameters
 
-def count_params(module):
+def count_parameters(module):
     total_params = 0
     for p in module.parameters():
         if str(p.layout) == 'torch.sparse_coo':
