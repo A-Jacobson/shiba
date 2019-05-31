@@ -85,11 +85,22 @@ def repackage_hidden(h):
         return tuple(repackage_hidden(v) for v in h)
 
 
-def count_parameters(module):
-    num_parameters = 0
-    for parameter in module.parameters():
-        num_parameters += np.prod(parameter.shape)
-    return num_parameters
+# def count_parameters(module):
+#
+#     num_parameters = 0
+#     for parameter in module.parameters():
+#         num_parameters += np.prod(parameter.shape)
+#     return num_parameters
+
+def count_params(module):
+    total_params = 0
+    for p in module.parameters():
+        if str(p.layout) == 'torch.sparse_coo':
+            total_params += p._nnz()
+        else:
+            if p.requires_grad:
+                total_params += p.numel()
+    return total_params
 
 
 class LayerCache:
