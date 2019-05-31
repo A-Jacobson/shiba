@@ -207,28 +207,26 @@ def plot_confusion_matrix(cm, class_names=None, as_array=False):
         return torch.from_numpy(np.array(Image.open(buff))).permute(2, 0, 1)
 
 
-def plot_text(inputs, outputs, targets, i2w=None, limit=5, as_array=False):
+def plot_text(outputs, targets, i2w=None, limit=5, as_array=False):
     import seaborn as sns
-    inputs = inputs.t().cpu()[:limit]
     targets = targets.t().cpu()[:limit]
     preds = outputs.argmax(dim=-1).t().cpu()[:limit]
 
     figure, axes = plt.subplots(nrows=limit,
-                                figsize=(targets.shape[1], limit * 2), sharex=True)
+                                figsize=(targets.shape[1], limit), sharex=True)
 
     def to_words(indices, i2w=None):
         return np.array([i2w[i] for i in indices])
 
     for i in range(limit):
-        indices = np.stack([inputs[i], targets[i], preds[i]])
+        indices = np.stack([targets[i], preds[i]])
         if i2w:
-            text = np.stack([to_words(inputs[i], i2w),
-                             to_words(targets[i], i2w),
+            text = np.stack([to_words(targets[i], i2w),
                              to_words(preds[i], i2w)])
         else:
             text = indices
         sns.heatmap(indices, cmap=plt.cm.Purples, annot=text, fmt='s', cbar=False,
-                    yticklabels=[f'inputs\n{i}  ', f'target\n{i}  ', f'pred\n{i}  '],
+                    yticklabels=[f'target\n{i}  ', f'pred\n{i}  '],
                     xticklabels=False, ax=axes[i])
         plt.sca(axes[i])
         plt.yticks(rotation=0)
@@ -243,4 +241,4 @@ def plot_text(inputs, outputs, targets, i2w=None, limit=5, as_array=False):
 
 
 def vis_text(inputs, outputs, targets, i2w=None, limit=5):
-    return dict(vis_text=plot_text(inputs, outputs, targets, i2w, limit, as_array=True))
+    return dict(vis_text=plot_text(outputs, targets, i2w, limit, as_array=True))

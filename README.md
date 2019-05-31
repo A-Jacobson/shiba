@@ -14,7 +14,7 @@ So, I'm shamelessly stealing the best (my opinion) parts of each.
 
 ## Install
 ```bash
-pip install git+https://github.com/A-Jacobson/shiba.git
+pip install -U git+https://github.com/A-Jacobson/shiba.git
 ```
 
 ### Train resnet18 on CIFAR10 with tensorboard logging, Checkpointing, and a customer Metric.
