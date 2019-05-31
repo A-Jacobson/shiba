@@ -101,6 +101,7 @@ class Trainer:
         default_callbacks = [ProgressBar(val_bar=pbar),
                              Metric('loss', transform=lambda x: x['loss'].item())]
         callbacks = self._set_callbacks(callbacks, default_callbacks)
+        self.batch_size = data_loader.batch_size  # HACK, set like this to cover LMloader.
         self.model = model_to_devices(self.model, self.device, device_ids)
         self.model.eval()
         self.out['hidden'] = self.init_hidden()  # check if rnn and cache hidden trainer for sequence models

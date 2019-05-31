@@ -229,7 +229,7 @@ def plot_text(inputs, outputs, targets, i2w=None, limit=5, as_array=False):
         else:
             text = np.stack([inputs[i], targets[i], preds[i]])  # else show word indices
         sns.heatmap(diff, cmap=plt.cm.Purples, annot=text, fmt='s', cbar=False,
-                    yticklabels=[f'inputs\n{i}  ', f'target\n{i}  ', f'pred\n{i}  '],
+                    yticklabels=[f'input\n{i}  ', f'target\n{i}  ', f'pred\n{i}  '],
                     xticklabels=False, ax=axes[i])
         plt.sca(axes[i])
         plt.yticks(rotation=0)
