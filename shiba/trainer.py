@@ -68,12 +68,12 @@ class Trainer:
                              Metric('loss', transform=lambda x: x['loss'].item())]
         callbacks = self._set_callbacks(callbacks, default_callbacks)
         self.model = model_to_devices(self.model, self.device, device_ids)
-        self.batch_size = train_loader.batch_size  # HACK, set like this to cover LMloader.
         self.num_batches = len(train_loader)
         # try except here lets us break training within a callback by raising EndTraining error.
         try:
             callbacks.on_train_begin(self)
             for epoch in range(epochs):
+                self.batch_size = train_loader.batch_size  # HACK, set like this to cover LMloader.
                 self.model.train()
                 # cache hidden trainer for sequence models, core is passed to step_function
                 self.out['hidden'] = self.init_hidden()
