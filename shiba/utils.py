@@ -85,13 +85,6 @@ def repackage_hidden(h):
         return tuple(repackage_hidden(v) for v in h)
 
 
-# def count_parameters(module):
-#
-#     num_parameters = 0
-#     for parameter in module.parameters():
-#         num_parameters += np.prod(parameter.shape)
-#     return num_parameters
-
 def count_parameters(module):
     total_params = 0
     for p in module.parameters():

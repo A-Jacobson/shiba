@@ -162,10 +162,12 @@ class Trainer:
 
     def to_fp16(self, opt_level="O1"):
         amp_available = False
+        levels = {'O0': 'fp32', 'O1': 'Mixed (Safe)', 'O2': 'Mixed (Fast)', 'O3': 'fp16'}
         try:
             from apex import amp
             amp_available = True
-            print('mixed precision training enabled.')
+            print(f'Amp enabled opt_level: {opt_level} - {levels[opt_level]}.')
+            print('see https://nvidia.github.io/apex/amp.html for more details.')
         except ImportError as e:
             warnings.warn(f"Error '{e}'' during importing apex library. To use mixed precision"
                           " you should install it by running  "
