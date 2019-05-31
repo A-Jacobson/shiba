@@ -27,12 +27,12 @@ class Save(Callback):
         if not self.value:
             raise ValueError(
                 f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')
-        value = self.value if self.mode == 'max' else -self.value  # flip comparison if mode = max
-        if (self.last_save == self.interval) and value < self.best_value:
+        value = self.value if self.mode == 'min' else -self.value  # flip comparison if mode = max
+        if (self.last_save == self.interval) and (value < self.best_value):
             self.save_dir.mkdir(parents=True, exist_ok=True)
-            save_path = self.save_dir / f'epoch:{trainer.epoch}_{self.monitor}:{self.value:.3f}.pth'
+            save_path = self.save_dir / f'epoch:{trainer.epoch}-{self.monitor}:{self.value:.3f}.pth'
             trainer.save(save_path)
-            self.past_checkpoints.append([self.value, save_path])
+            self.past_checkpoints.append([value, save_path])
             # remove worst checkpoint before saving new checkpoint, also compare new checkpoint
             if len(self.past_checkpoints) > self.max_saves:
                 if self.mode == 'min':

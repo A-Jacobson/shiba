@@ -228,6 +228,6 @@ class ConfusionMeter:
         """
         if normalized:
             matrix = self.matrix.astype(np.float32)
-            return np.around(matrix / matrix.sum(axis=1)[:, None], decimals=2)
+            return np.around(matrix / matrix.sum(axis=1)[:, None], decimals=4)
         else:
             return self.matrix
