@@ -209,6 +209,8 @@ def plot_confusion_matrix(cm, class_names=None, as_array=False):
 
 def plot_text(inputs, outputs, targets, i2w=None, limit=5, as_array=False):
     import seaborn as sns
+    seq_len, bs = inputs.shape
+    limit = min(seq_len, limit)
     inputs = inputs.t().cpu()[:limit]
     targets = targets.t().cpu()[:limit]
     preds = outputs.argmax(dim=-1).t().cpu()[:limit]
@@ -221,14 +223,14 @@ def plot_text(inputs, outputs, targets, i2w=None, limit=5, as_array=False):
 
     for i in range(limit):
 
-        diff = np.stack([diff[i], diff[i], diff[i]])  # highlight mis-predicted words
+        matrix = np.stack([diff[i], diff[i], diff[i]])  # highlight mis-predicted words
         if i2w:
             text = np.stack([to_words(inputs[i], i2w),
                             to_words(targets[i], i2w),  # if dict, show words
                             to_words(preds[i], i2w)])
         else:
             text = np.stack([inputs[i], targets[i], preds[i]])  # else show word indices
-        sns.heatmap(diff, cmap=plt.cm.Purples, annot=text, fmt='s', cbar=False,
+        sns.heatmap(matrix, cmap=plt.cm.Purples, annot=text, fmt='s', cbar=False,
                     yticklabels=[f'input\n{i}  ', f'target\n{i}  ', f'pred\n{i}  '],
                     xticklabels=False, ax=axes[i])
         plt.sca(axes[i])
