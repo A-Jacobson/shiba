@@ -207,27 +207,29 @@ def plot_confusion_matrix(cm, class_names=None, as_array=False):
         return torch.from_numpy(np.array(Image.open(buff))).permute(2, 0, 1)
 
 
-def plot_text(outputs, targets, i2w=None, limit=5, as_array=False):
+def plot_text(inputs, outputs, targets, i2w=None, limit=5, as_array=False):
     import seaborn as sns
+    inputs = inputs.t().cpu()[:limit]
     targets = targets.t().cpu()[:limit]
     preds = outputs.argmax(dim=-1).t().cpu()[:limit]
     diff = (targets != preds)
     figure, axes = plt.subplots(nrows=limit,
-                                figsize=(targets.shape[1], limit), sharex=True)
+                                figsize=(targets.shape[1], limit*2), sharex=True)
 
     def to_words(indices, i2w=None):
         return np.array([i2w[i] for i in indices])
 
     for i in range(limit):
 
-        diff = np.stack([diff[i], diff[i]])  # highlight mis-predicted words
+        diff = np.stack([diff[i], diff[i], diff[i]])  # highlight mis-predicted words
         if i2w:
-            text = np.stack([to_words(targets[i], i2w), # if dict, show words
-                             to_words(preds[i], i2w)])
+            text = np.stack([to_words(inputs[i], i2w),
+                            to_words(targets[i], i2w),  # if dict, show words
+                            to_words(preds[i], i2w)])
         else:
-            text = np.stack([targets[i], preds[i]])  # else show word indices
+            text = np.stack([inputs[i], targets[i], preds[i]])  # else show word indices
         sns.heatmap(diff, cmap=plt.cm.Purples, annot=text, fmt='s', cbar=False,
-                    yticklabels=[f'target\n{i}  ', f'pred\n{i}  '],
+                    yticklabels=[f'inputs\n{i}  ', f'target\n{i}  ', f'pred\n{i}  '],
                     xticklabels=False, ax=axes[i])
         plt.sca(axes[i])
         plt.yticks(rotation=0)
