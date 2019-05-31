@@ -244,4 +244,4 @@ def plot_text(inputs, outputs, targets, i2w=None, limit=5, as_array=False):
 
 
 def vis_text(inputs, outputs, targets, i2w=None, limit=5):
-    return dict(vis_text=plot_text(outputs, targets, i2w, limit, as_array=True))
+    return dict(vis_text=plot_text(inputs, outputs, targets, i2w, limit, as_array=True))
