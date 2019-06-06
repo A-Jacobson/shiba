@@ -35,4 +35,4 @@ def f1(prediction, target):
     EPS = 1e-10
     intersection = (prediction * target).sum().float()
     union = (prediction.sum() + target.sum()).float()
-    return 2 * (intersection + EPS) / (union + 2 * EPS)
+    return (2 * (intersection + EPS) / (union + 2 * EPS)).item()
