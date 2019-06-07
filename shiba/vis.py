@@ -139,11 +139,11 @@ def apply_masks(image, masks, colors=COLORS, alpha=0.7):
 
 
 def vis_segment(inputs, outputs, targets, nrow=4):
-    outputs_grid = make_grid(outputs.sigmoid() > 0.5, nrow=nrow)
-    inputs_grid = make_grid(inputs[:, :3, ...], nrow=nrow)
-    targets_grid = make_grid(targets, nrow=nrow)
-    predictions = apply_masks(inputs_grid, outputs_grid)
-    targets = apply_masks(inputs_grid, targets_grid)
+    outputs_grid = make_grid(outputs.sigmoid() > 0.5, nrow=nrow).cpu()
+    inputs_grid = make_grid(inputs[:, :3, ...], nrow=nrow).cpu()
+    targets_grid = make_grid(targets, nrow=nrow).cpu()
+    predictions = apply_masks(inputs_grid, outputs_grid).transpose(2, 0, 1)
+    targets = apply_masks(inputs_grid, targets_grid).transpose(2, 0, 1)
     return dict(preddictions=predictions, targets=targets)
 
 
