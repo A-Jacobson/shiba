@@ -19,6 +19,9 @@ class LRFinder(Callback):
         self.lr = min_lr
         self._step_save = None
 
+    def plot(self):
+        plot_lr_find(self.lrs, self.losses)
+
     def on_train_begin(self, trainer):
         self._step_save = trainer.global_step
         self.model_state = copy.deepcopy(trainer.model.state_dict())

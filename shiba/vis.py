@@ -144,7 +144,7 @@ def vis_segment(inputs, outputs, targets, nrow=4, alpha=0.4):
     targets_grid = make_grid(targets, nrow=nrow).cpu()
     predictions = apply_masks(inputs_grid, outputs_grid, alpha=alpha).transpose(2, 0, 1)
     targets = apply_masks(inputs_grid, targets_grid, alpha=alpha).transpose(2, 0, 1)
-    return dict(preddictions=predictions, targets=targets)
+    return dict(predictions=predictions, targets=targets)
 
 
 def vis_classify(inputs, outputs, targets, class_names=None, num_columns=4, scale=6):
