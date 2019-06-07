@@ -46,7 +46,7 @@ class Trainer:
         self.train_step = train_step or default_step
         self.eval_step = eval_step or self.train_step
 
-    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=None):
+    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=-1):
         """
         Args:
             train_dataset: Pytorch Dataset or loader
@@ -162,24 +162,21 @@ class Trainer:
         trace.save(path)
 
     def to_fp16(self, opt_level="O1"):
-        amp_available = False
         levels = {'O0': 'fp32', 'O1': 'Mixed (Safe)', 'O2': 'Mixed (Fast)', 'O3': 'fp16'}
-        try:
-            from apex import amp
-            amp_available = True
-            print(f'Amp enabled opt_level: {opt_level} - {levels[opt_level]}.')
-            print('see https://nvidia.github.io/apex/amp.html for more details.')
-        except ImportError as e:
-            warnings.warn(f"Error '{e}'' during importing apex library. To use mixed precision"
-                          " you should install it by running  "
-                          'pip install git+https://github.com/NVIDIA/apex.git -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext"')
-        if amp_available:
-            self.model.to('cuda')
-            self.model, self.optimizer = amp.initialize(self.model, self.optimizer,
-                                                        opt_level=opt_level, verbosity=0)
-            self.use_fp16 = True
+        if torch.cuda.is_available():
+            try:
+                from apex import amp
+                self.model, self.optimizer = amp.initialize(self.model.to('cuda'), self.optimizer,
+                                                            opt_level=opt_level, verbosity=0)
+                self.use_fp16 = True
+                print(f'Amp enabled opt_level: {opt_level} - {levels[opt_level]}.')
+                print('see https://nvidia.github.io/apex/amp.html for more details.')
+            except ImportError as e:
+                warnings.warn(f"Error '{e}'' during importing apex library. To use mixed precision"
+                              " you should install it by running  "
+                              'pip install git+https://github.com/NVIDIA/apex.git -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext"')
         else:
-            pass
+            print('fp16 training only available on gpu.')
 
     def _build_optimizer(self, optimizer):
         optimizer = optimizer or Adam

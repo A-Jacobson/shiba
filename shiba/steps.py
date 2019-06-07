@@ -16,7 +16,7 @@ def default_step(trainer, batch):
 def rnn_step(trainer, batch, seq_len=None):
     hidden = repackage_hidden(trainer.out['hidden'])
     inputs, targets = batch  # inputs.shape : (batch, seq)
-    inputs, targets = inputs.to(trainer.device), targets.to(trainer.device)
+    inputs, targets = inputs.to(trainer.device, non_blocking=True), targets.to(trainer.device, non_blocking=True)
     outputs, hidden = trainer.model(inputs, hidden)
     batch_seq_len, batch_size, vocab_size = outputs.shape
     loss = trainer.criterion(outputs.view(-1, vocab_size), targets.view(-1))

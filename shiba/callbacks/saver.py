@@ -45,3 +45,4 @@ class Save(Callback):
                 Path(path).unlink()
             self.last_save = 0
             self.best_value = value
+
