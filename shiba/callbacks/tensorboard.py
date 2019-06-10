@@ -16,10 +16,8 @@ class TensorBoard(Callback):
     def on_train_begin(self, trainer):
         self.writer = SummaryWriter(logdir=self.log_dir)
         if self.hyperparams:
-            text = ''
             for name, value in self.hyperparams.items():
-                text += f'{name}: {str(value)}  '
-            self.writer.add_text('hyperparams', text, trainer.global_step)
+                self.writer.add_text('hyperparams', f'{name}: {str(value)}', trainer.global_step)
 
     def on_batch_end(self, trainer):
         self.writer.add_scalar('learning_rate', get_lr(trainer.optimizer), trainer.global_step)
