@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torchvision import transforms
+from collections import OrderedDict
 
 
 class EndTraining(Exception):
@@ -238,3 +239,17 @@ class ConfusionMeter:
             return np.around(matrix / matrix.sum(axis=1)[:, None], decimals=4)
         else:
             return self.matrix
+
+
+def remove_hooks(model):
+    if model._backward_hooks != OrderedDict():
+        print('removing backward hooks: ', model._backward_hooks)
+        model._backward_hooks = OrderedDict()
+    if model._forward_hooks != OrderedDict():
+        print('removing forward hooks: ', model._forward_hooks)
+        model._forward_hooks = OrderedDict()
+    if model._forward_pre_hooks != OrderedDict():
+        print('removing forward pre-hooks: ', model._forward_pre_hooks)
+        model._forward_pre_hooks = OrderedDict()
+    for child in model.children():
+        remove_hooks(child)
