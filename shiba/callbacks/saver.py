@@ -28,16 +28,16 @@ class Save(Callback):
                 f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')
 
         value = self.value if self.mode == 'min' else -self.value  # flip comparison if mode = max
-
-        if (self.last_save == self.interval) and (value < self.best_value):
-            self.save_dir.mkdir(parents=True, exist_ok=True)
-            save_path = self.save_dir / f'epoch:{trainer.epoch}-{self.monitor}:{self.value:.3f}.pth'
-            trainer.save(save_path)
-            if self.verbose > 0:
-                print(f'saving checkpoint to {save_path}')
-            self.past_checkpoints.append([value, save_path])
-            self.last_save = 0
+        if value <= self.best_value:
             self.best_value = value
+            if self.last_save == self.interval:
+                self.save_dir.mkdir(parents=True, exist_ok=True)
+                save_path = self.save_dir / f'epoch:{trainer.epoch}-{self.monitor}:{self.value:.3f}.pth'
+                trainer.save(save_path)
+                if self.verbose > 0:
+                    print(f'saving checkpoint to {str(save_path)}.\n')
+                self.past_checkpoints.append([value, save_path])
+                self.last_save = 0
 
         # remove worst checkpoint before saving new checkpoint, also compare new checkpoint
         if len(self.past_checkpoints) > self.max_saves:
@@ -45,7 +45,7 @@ class Save(Callback):
             self.past_checkpoints.remove(worst)
             value, path = worst
             if self.verbose > 1:
-                print(f'removing checkpoint {str(path)}')
+                print(f'removing checkpoint {str(path)}.\n')
             Path(path).unlink()
 
 
