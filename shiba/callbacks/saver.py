@@ -27,7 +27,7 @@ class Save(Callback):
             raise ValueError(
                 f'could not find metric: {self.monitor} track it with a callback: `Metric(score_func, {self.monitor})`!')
 
-        value = self.value if self.mode == 'min' else -self.value  # flip comparison if mode = max
+        value = self.value if self.mode == 'min' else -self.value  # flip value if mode = max
         if value <= self.best_value:
             self.best_value = value
             if self.last_save == self.interval:
@@ -47,5 +47,3 @@ class Save(Callback):
             if self.verbose > 1:
                 print(f'removing checkpoint {str(path)}.\n')
             Path(path).unlink()
-
-
