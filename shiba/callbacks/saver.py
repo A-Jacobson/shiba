@@ -33,11 +33,11 @@ class Save(Callback):
             trainer.save(save_path)
             if self.verbose > 0:
                 print(f'saving checkpoint to {str(save_path)}.\n')
-            self.past_checkpoints.append([value, save_path])
+            self.past_checkpoints.append([self.value, save_path])
 
         # remove worst checkpoint before saving new checkpoint, also compare new checkpoint
         if len(self.past_checkpoints) > self.max_saves:
-            worst = min(self.past_checkpoints)
+            worst = max(self.past_checkpoints) if self.mode == 'min' else min(self.past_checkpoints)
             self.past_checkpoints.remove(worst)
             value, path = worst
             if self.verbose > 1:

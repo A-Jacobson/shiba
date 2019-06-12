@@ -47,7 +47,8 @@ class TensorBoard(Callback):
             self.writer.add_image('train_confusion_matrix', train_vis, trainer.global_step)
             self.writer.add_image('val_confusion_matrix', val_vis, trainer.global_step)
 
-    def get_callback(self, callbacks, callback):
+    @staticmethod
+    def get_callback(callbacks, callback):
         """
         return the first instance of a callback in the list of callbacks o(n)
         """
