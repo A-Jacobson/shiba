@@ -46,7 +46,11 @@ class LRFinder(Callback):
 
     def on_train_end(self, trainer):
         # restore states and plot results
-        trainer.model.load_state_dict(self.model_state)
-        trainer.optimizer.load_state_dict(self.optimizer_state)
-        trainer.global_step = self._step_save
         plot_lr_find(self.lrs, self.losses)
+        trainer.global_step = self._step_save
+        try:
+            trainer.model.load_state_dict(self.model_state)
+        except Exception as e:
+            print('failed to reload model checkpoint, remake trainer with fresh model')
+            print(e)
+        trainer.optimizer.load_state_dict(self.optimizer_state)
