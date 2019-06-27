@@ -27,7 +27,7 @@ class Trainer:
         self.criterion = criterion
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.use_fp16 = False
+        self.use_apex = False
 
         self.out = dict()
         # self.out = dict()
@@ -161,15 +161,19 @@ class Trainer:
         trace = torch.jit.trace(self.model, example_inputs)
         trace.save(path)
 
-    def to_fp16(self, opt_level="O1"):
-        levels = {'O0': 'fp32', 'O1': 'Mixed (Safe)', 'O2': 'Mixed (Fast)', 'O3': 'fp16'}
+    def precision(self, level="Mixed_S"):
+        """
+        Args:
+            level: "fp32, Mixed_S, Mixed_F, fp16"
+        """
+        levels = {'fp32': 'O0', 'Mixed_S': 'O1', 'Mixed_F': 'O2', 'fp16': 'O3'}
         if torch.cuda.is_available():
             try:
                 from apex import amp
                 self.model, self.optimizer = amp.initialize(self.model.to('cuda'), self.optimizer,
-                                                            opt_level=opt_level, verbosity=0)
-                self.use_fp16 = True
-                print(f'Amp enabled opt_level: {opt_level} - {levels[opt_level]}.')
+                                                            opt_level=levels[level], verbosity=0)
+                self.use_apex = True
+                print(f'Amp enabled level: {level}')
                 print('see https://nvidia.github.io/apex/amp.html for more details.')
             except ImportError as e:
                 warnings.warn(f"Error '{e}'' during importing apex library. To use mixed precision"
@@ -184,7 +188,7 @@ class Trainer:
 
     def backward(self):
         """backward pass, optionally with apex loss scaling"""
-        if self.use_fp16:
+        if self.use_apex:
             try:
                 from apex import amp
                 with amp.scale_loss(self.out['loss'], self.optimizer) as scaled_loss:
