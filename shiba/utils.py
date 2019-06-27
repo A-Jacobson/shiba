@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from torch import nn
 from torchvision import transforms
 from collections import OrderedDict
 
@@ -123,7 +124,14 @@ def model_summary(model, *inputs, markdown=True, return_layers=False):
     from tabulate import tabulate
     from IPython.display import display, Markdown
 
-    layers = [LayerCache(module, name) for name, module in model.named_children()]
+    layers = []
+    for name, module in model.named_children():
+        if isinstance(module, (nn.Sequential, nn.ModuleList)):
+            for n, m in module.named_children():
+                layers.append(LayerCache(m, f'{name}-{n}'))
+        else:
+            layers.append(LayerCache(module, name))
+
     out = model(*inputs)
     summary = []
     total_params = 0
