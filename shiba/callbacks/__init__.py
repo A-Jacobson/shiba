@@ -9,6 +9,8 @@ from .tensorboard import TensorBoard
 from .lamb import LambdaCallback
 from .polyaxon import PolyaxonLogger
 from .confusion import ConfusionMatrix
+from .neptune import NeptuneCallback
 
 __all__ = ('Metric', 'TensorBoard', 'ProgressBar', 'Callback', 'Compose', 'Debug', 'ConfusionMatrix',
-           'LRFinder', 'Save', 'PytorchScheduler', 'ReduceLROnPlateau', 'OneCycle', 'LambdaCallback', 'PolyaxonLogger')
+           'LRFinder', 'Save', 'PytorchScheduler', 'ReduceLROnPlateau', 'OneCycle', 'LambdaCallback', 'PolyaxonLogger',
+           'NeptuneCallback')
