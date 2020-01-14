@@ -1,4 +1,6 @@
 import neptune
+import PIL import Image
+
 from shiba.utils import get_lr, get_momentum
 from shiba.vis import plot_confusion_matrix
 
@@ -34,14 +36,19 @@ class NeptuneCallback(Callback):
                                     trainer.out['outputs'],
                                     trainer.out['targets'])
             for name, value in vis.items():
-                neptune.log_image(name, value.cpu().numpy().transpose(1, 2, 0))
+                if value.shape[1] > 512:
+                    # neptune only allows <2mb images which ends up being baout (512, 512)
+                    value = Image.fromarray(value)
+                    value.thumbnail(512)
+                    value = np.array(value).astype('uint8').transpose(1, 2, 0)
+                neptune.log_image(name, value)
 
         cb = self.get_callback(trainer.callbacks, ConfusionMatrix)
         if cb:
             train_vis = plot_confusion_matrix(cb.train_matrix, cb.class_names, as_array=True)
             val_vis = plot_confusion_matrix(cb.val_matrix, cb.class_names, as_array=True)
-            neptune.log_image('train_confusion_matrix', train_vis.cpu().numpy().transpose(1, 2, 0))
-            neptune.log_image('val_confusion_matrix', val_vis.cpu().numpy().transpose(1, 2, 0))
+            neptune.log_image('train_confusion_matrix', train_vis.transpose(1, 2, 0))
+            neptune.log_image('val_confusion_matrix', val_vis.transpose(1, 2, 0))
 
     @staticmethod
     def get_callback(callbacks, callback):
