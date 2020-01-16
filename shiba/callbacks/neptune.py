@@ -1,4 +1,5 @@
 import neptune
+from PIL import Image
 from shiba.utils import get_lr, get_momentum
 from shiba.vis import plot_confusion_matrix
 
@@ -16,32 +17,35 @@ class NeptuneCallback(Callback):
         neptune.create_experiment(self.exp_name, params=self.hyperparams)
 
     def on_batch_end(self, trainer):
-        neptune.log_metric('learning_rate', get_lr(trainer.optimizer))
+        neptune.log_metric('learning_rate', get_lr(trainer.optimizer), timestamp=trainer.global_step)
         momentum = get_momentum(trainer.optimizer)
         if momentum:
             neptune.log_metric('momentum', momentum)
         for metric, value in trainer.metrics.items():
             if 'train' in metric:
-                neptune.log_metric(metric, value)
+                neptune.log_metric(metric, value, timestamp=trainer.global_step)
 
     def on_epoch_end(self, trainer):
         for metric, value in trainer.metrics.items():
             if 'val' in metric:
-                neptune.log_metric(metric, value)
+                neptune.log_metric(metric, value, timestamp=trainer.global_step)
 
         if self.vis_function:
             vis = self.vis_function(trainer.out['inputs'],
                                     trainer.out['outputs'],
                                     trainer.out['targets'])
             for name, value in vis.items():
-                neptune.log_image(name, value.cpu().numpy().transpose(1, 2, 0))
+                if value.shape[0] > 512:
+                    value = Image.fromarray(value)
+                    value.thumbnail((512, 512))
+                neptune.log_image(name, value.numpy().transpose(1, 2, 0))
 
         cb = self.get_callback(trainer.callbacks, ConfusionMatrix)
         if cb:
             train_vis = plot_confusion_matrix(cb.train_matrix, cb.class_names, as_array=True)
             val_vis = plot_confusion_matrix(cb.val_matrix, cb.class_names, as_array=True)
-            neptune.log_image('train_confusion_matrix', train_vis.cpu().numpy().transpose(1, 2, 0))
-            neptune.log_image('val_confusion_matrix', val_vis.cpu().numpy().transpose(1, 2, 0))
+            neptune.log_image('train_confusion_matrix', train_vis.transpose(1, 2, 0), timestamp=trainer.global_step)
+            neptune.log_image('val_confusion_matrix', val_vis.transpose(1, 2, 0), timestamp=trainer.global_step)
 
     @staticmethod
     def get_callback(callbacks, callback):
