@@ -1,7 +1,5 @@
 # shiba
-A simple, flexible, pytorch trainer. Lighter (just a trainer) and lower level than `fastai`, higher level than `ignite`.
-There are many like it, but I've tried them all and wasn't satisfied.
-So, I'm shamelessly stealing the best (my opinion) parts of each.
+A simple, flexible, pytorch trainer. We try to be lighter (just a trainer) and lower level than `fastai` and higher level than `ignite`.
 
 ### Features 
 - `callbacks/fit api` (keras/sklearn)
