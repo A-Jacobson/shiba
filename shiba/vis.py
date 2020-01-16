@@ -44,12 +44,15 @@ def show_images(images, num_columns=4, titles=None, scale=6, as_array=False, tit
         num_columns (int): number of columns.
         titles (list, optional): list of image titles
     """
-    title_colors = title_colors or ['b'] * len(images)
+
     if isinstance(images[0], Image.Image):
         images = [np.array(image.copy()) for image in images]
     if isinstance(images[0], torch.Tensor):
         images = [image.permute(1, 2, 0) if image.dim() == 3 else image.float() for image in images]
 
+    title_colors = title_colors or ['b'] * len(images)
+
+    num_columns = min(len(images), num_columns)
     num_rows = math.ceil(len(images) / num_columns)
     figure, axes = plt.subplots(nrows=num_rows, ncols=num_columns,
                              figsize=(num_columns * scale, num_rows * scale))
@@ -106,13 +109,21 @@ def apply_masks(image, masks, colors=COLORS, alpha=0.7):
         new image with masks applied
     """
 
-    def format_shape(array):
+    def format_mask_shape(array):
         if len(array.shape) != 3:
-            raise ValueError('images and masks must be 3-dimensional')
+            array = array[..., None]
         channel_index = np.argmin(array.shape)
         if channel_index != 2:
             array = array.transpose(1, 2, channel_index)
         return array
+
+    def format_image_shape(array):
+        if len(array.shape) != 3:
+            raise ValueError('images must be 3-dimensional')
+        channel_index = np.argmin(array.shape)
+        if channel_index != 2:
+            array = array.transpose(1, 2, channel_index)
+        return array[..., :3]
 
     def format_image_dtype(image):
         if isinstance(image, torch.Tensor):
@@ -130,8 +141,8 @@ def apply_masks(image, masks, colors=COLORS, alpha=0.7):
 
     image = format_image_dtype(image)
     masks = format_mask_dtype(masks)
-    image = format_shape(image)
-    masks = format_shape(masks)
+    image = format_image_shape(image)
+    masks = format_mask_shape(masks)
 
     for i in range(masks.shape[-1]):
         image = _apply_mask(image, masks[..., i], color_rgb=colors[i % len(colors)], alpha=alpha)
