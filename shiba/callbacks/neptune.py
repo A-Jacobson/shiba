@@ -38,7 +38,7 @@ class NeptuneCallback(Callback):
                 if value.shape[0] > 512:
                     value = Image.fromarray(value)
                     value.thumbnail((512, 512))
-                neptune.log_image(name, value.numpy().transpose(1, 2, 0))
+                neptune.log_image(name, value.transpose(1, 2, 0))
 
         cb = self.get_callback(trainer.callbacks, ConfusionMatrix)
         if cb:
