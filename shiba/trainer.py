@@ -21,7 +21,6 @@ class Trainer:
             train_step: pass train_function to customize training loop.
             eval_step: pass eval_function to customize training loop.
         """
-        super(Trainer, self).__init__()
         self.model = model
         self.optimizer = self._build_optimizer(optimizer)
         self.criterion = criterion
@@ -30,7 +29,6 @@ class Trainer:
         self.use_apex = False
 
         self.out = dict()
-        # self.out = dict()
         self.metrics = dict()
 
         self.step = None
@@ -161,7 +159,7 @@ class Trainer:
         trace = torch.jit.trace(self.model, example_inputs)
         trace.save(path)
 
-    def precision(self, level="Mixed_S"):
+    def precision(self, level="fp32"):
         """
         Args:
             level: "fp32, Mixed_S, Mixed_F, fp16"
