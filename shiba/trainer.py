@@ -44,7 +44,7 @@ class Trainer:
         self.train_step = train_step or default_step
         self.eval_step = eval_step or self.train_step
 
-    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=tuple(0)):
+    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=(0, )):
         """
         Args:
             train_dataset: Pytorch Dataset or loader
@@ -53,7 +53,7 @@ class Trainer:
             lr: learning rate
             batch_size: sets, batch size on loader ignored if loader is passed
             num_workers: num_workers for data loader, ignored if loader is passed
-            device_ids: [0, 1, 2] gpu device ids for multi-gpu training
+            device_ids: [0, 1, 2] gpu device ids for multi-gpu training -1 for all
             callbacks: list of callbacks
         Returns:
         """
