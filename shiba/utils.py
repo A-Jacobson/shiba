@@ -160,12 +160,12 @@ def model_summary(model, *inputs, markdown=True, return_layers=False):
         return layers
 
 
-def model_to_devices(model, device, device_ids: tuple = (-1)):
+def model_to_devices(model, device, device_ids: tuple = -1):
     model = model.to(device)
     num_devices = torch.cuda.device_count()
-    if device_ids == (-1) and num_devices > 1:
+    if device_ids == -1 and num_devices > 1:
         model = torch.nn.DataParallel(model)
-    if device_ids != (-1) and num_devices > 1:
+    if device_ids != -1 and num_devices > 1:
         model = torch.nn.DataParallel(model, device_ids)
     return model
 

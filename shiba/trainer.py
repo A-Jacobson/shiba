@@ -44,7 +44,7 @@ class Trainer:
         self.train_step = train_step or default_step
         self.eval_step = eval_step or self.train_step
 
-    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=-1):
+    def fit(self, train_loader, val_loader=None, epochs=1, lr=3e-4, callbacks=None, device_ids=tuple(0)):
         """
         Args:
             train_dataset: Pytorch Dataset or loader
@@ -65,7 +65,11 @@ class Trainer:
         default_callbacks = [ProgressBar(),
                              Metric('loss', transform=lambda x: x['loss'].item())]
         callbacks = self._set_callbacks(callbacks, default_callbacks)
-        self.model = model_to_devices(self.model, self.device, device_ids)
+        if len(device_ids) == 1 and device_ids != -1:
+            self.device = f'{self.device}:{device_ids[0]}' if self.device == 'cuda' else self.device
+            self.model = self.model.to(self.device)
+        else:
+            self.model = model_to_devices(self.model, self.device, device_ids)
         self.num_batches = len(train_loader)
         # try except here lets us break training within a callback by raising EndTraining error.
         try:
@@ -165,7 +169,7 @@ class Trainer:
             level: "fp32, Mixed_S, Mixed_F, fp16"
         """
         levels = {'fp32': 'O0', 'Mixed_S': 'O1', 'Mixed_F': 'O2', 'fp16': 'O3'}
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and level != 'fp32':
             try:
                 from apex import amp
                 self.model, self.optimizer = amp.initialize(self.model.to('cuda'), self.optimizer,
