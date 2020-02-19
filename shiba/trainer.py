@@ -130,7 +130,7 @@ class Trainer:
 
     def fit_one_cycle(self, train_loader, val_loader=None, epochs=1, max_lr=1e-3, callbacks=None,
                       end_percentage=0.1, scale_percentage=None, maximum_momentum=0.95, minimum_momentum=0.85,
-                      device_ids=None):
+                      device_ids=(0, )):
         one_cycle = OneCycle(max_lr=max_lr,
                              end_percentage=end_percentage,
                              scale_percentage=scale_percentage,
