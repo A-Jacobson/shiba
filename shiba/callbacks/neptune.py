@@ -25,6 +25,17 @@ class NeptuneCallback(Callback):
             if 'train' in metric:
                 neptune.log_metric(metric, value, timestamp=trainer.global_step)
 
+    def on_eval_begin(self, trainer):
+        if self.vis_function:
+            vis = self.vis_function(trainer.out['inputs'],
+                                    trainer.out['outputs'],
+                                    trainer.out['targets'])
+            for name, value in vis.items():
+                if value.shape[0] > 512:
+                    value = Image.fromarray(value)
+                    value.thumbnail((512, 512))
+                neptune.log_image(name, value.transpose(1, 2, 0))
+
     def on_epoch_end(self, trainer):
         for metric, value in trainer.metrics.items():
             if 'val' in metric:

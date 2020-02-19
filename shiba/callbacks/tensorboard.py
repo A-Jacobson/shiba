@@ -28,6 +28,14 @@ class TensorBoard(Callback):
             if 'train' in metric:
                 self.writer.add_scalar(metric, value, trainer.global_step)
 
+    def on_eval_begin(self, trainer):
+        if self.vis_function:
+            vis = self.vis_function(trainer.out['inputs'],
+                                    trainer.out['outputs'],
+                                    trainer.out['targets'])
+            for name, value in vis.items():
+                self.writer.add_image(f'train_{name}', value, trainer.global_step)
+
     def on_epoch_end(self, trainer):
         for metric, value in trainer.metrics.items():
             if 'val' in metric:
