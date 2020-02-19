@@ -19,7 +19,7 @@ def mixup_step(trainer, batch, alpha=1.0):
     inputs = inputs.to(trainer.device, non_blocking=True)
     targets = targets.to(trainer.device, non_blocking=True)
     mixed_x, y_a, y_b, lam = mixup_data(inputs, targets, alpha=alpha, device=trainer.device)
-    outputs = trainer.model(inputs)
+    outputs = trainer.model(mixed_x)
     loss = mixup_criterion(trainer.criterion, outputs, y_a, y_b, lam)
     return dict(loss=loss,
                 inputs=inputs,
