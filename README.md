@@ -1,3 +1,6 @@
+# ARCHIVED
+currently using the lovely pytorch lightning https://github.com/PyTorchLightning/pytorch-lightning
+
 # shiba
 A simple, flexible, pytorch trainer. We try to be lighter (just a trainer) and lower level than `fastai` and higher level than `ignite`.
 
